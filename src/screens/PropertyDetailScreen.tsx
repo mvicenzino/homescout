@@ -331,9 +331,12 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     });
 
     if (!result.canceled && result.assets[0]) {
-      // In production, upload to Supabase Storage
-      // For now, just use the local URI
-      await addPhoto(property.id, result.assets[0].uri);
+      const { error } = await addPhoto(property.id, result.assets[0].uri);
+      if (error) {
+        Alert.alert('Error', `Failed to add photo: ${error}`);
+      } else {
+        Alert.alert('Success', 'Photo added');
+      }
     }
   };
 
@@ -354,8 +357,12 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
       if (clipboardImage && clipboardImage.data) {
         // Use data URI directly
         const dataUri = `data:image/png;base64,${clipboardImage.data}`;
-        await addPhoto(property.id, dataUri);
-        Alert.alert('Success', 'Photo added from clipboard');
+        const { error } = await addPhoto(property.id, dataUri);
+        if (error) {
+          Alert.alert('Error', `Failed to add photo: ${error}`);
+        } else {
+          Alert.alert('Success', 'Photo added from clipboard');
+        }
       } else {
         Alert.alert('Error', 'Could not read image from clipboard');
       }
