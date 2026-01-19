@@ -18,6 +18,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card, Badge, getStatusBadgeVariant, StarRating, Button } from '../components/ui';
 import { usePropertyStore, getPropertyWithRatings } from '../store/propertyStore';
 import { useAuthStore } from '../store/authStore';
@@ -34,14 +38,14 @@ import {
   formatDaysOnMarket,
 } from '../lib/formatters';
 import { calculateTotalMonthlyCost } from '../lib/calculators';
-import { HomeStackParamList, PropertyStatus, NoteType } from '../types';
+import { HomeStackParamList, PropertyStatus, NoteType, Offer, OfferStatus, PropertyDocument } from '../types';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PropertyDetail'>;
   route: RouteProp<HomeStackParamList, 'PropertyDetail'>;
 };
 
-type Tab = 'overview' | 'photos' | 'notes' | 'financials';
+type Tab = 'overview' | 'photos' | 'notes' | 'offers' | 'financials';
 
 const statusOptions: { value: PropertyStatus; label: string }[] = [
   { value: 'interested', label: 'Interested' },
@@ -73,6 +77,192 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     hasFinancialContext: boolean;
   } | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(true);
+
+  // Offers state
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [offerForm, setOfferForm] = useState({
+    amount: '',
+    earnest_money: '',
+    expiration_date: '',
+    closing_date: '',
+    notes: '',
+    contingencies: [] as string[],
+  });
+
+  // Documents state
+  const [documents, setDocuments] = useState<PropertyDocument[]>([]);
+
+  // Load offers and documents
+  useEffect(() => {
+    loadOffersAndDocs();
+  }, [propertyId]);
+
+  const loadOffersAndDocs = async () => {
+    try {
+      const offersData = await AsyncStorage.getItem(`offers_${propertyId}`);
+      if (offersData) setOffers(JSON.parse(offersData));
+
+      const docsData = await AsyncStorage.getItem(`docs_${propertyId}`);
+      if (docsData) setDocuments(JSON.parse(docsData));
+    } catch (error) {
+      console.error('Error loading offers/docs:', error);
+    }
+  };
+
+  const saveOffer = async (offer: Partial<Offer>) => {
+    const newOffer: Offer = {
+      id: editingOffer?.id || Date.now().toString(),
+      property_id: propertyId,
+      amount: parseInt(offerForm.amount) || 0,
+      offer_date: editingOffer?.offer_date || new Date().toISOString(),
+      expiration_date: offerForm.expiration_date || undefined,
+      status: editingOffer?.status || 'draft',
+      contingencies: offerForm.contingencies,
+      earnest_money: offerForm.earnest_money ? parseInt(offerForm.earnest_money) : undefined,
+      closing_date: offerForm.closing_date || undefined,
+      notes: offerForm.notes || undefined,
+      created_by: user?.id || '',
+      created_at: editingOffer?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const updatedOffers = editingOffer
+      ? offers.map((o) => (o.id === editingOffer.id ? newOffer : o))
+      : [...offers, newOffer];
+
+    setOffers(updatedOffers);
+    await AsyncStorage.setItem(`offers_${propertyId}`, JSON.stringify(updatedOffers));
+    setShowOfferModal(false);
+    setEditingOffer(null);
+    resetOfferForm();
+  };
+
+  const updateOfferStatus = async (offerId: string, status: OfferStatus) => {
+    const updatedOffers = offers.map((o) =>
+      o.id === offerId ? { ...o, status, updated_at: new Date().toISOString() } : o
+    );
+    setOffers(updatedOffers);
+    await AsyncStorage.setItem(`offers_${propertyId}`, JSON.stringify(updatedOffers));
+  };
+
+  const deleteOffer = async (offerId: string) => {
+    Alert.alert('Delete Offer', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const updatedOffers = offers.filter((o) => o.id !== offerId);
+          setOffers(updatedOffers);
+          await AsyncStorage.setItem(`offers_${propertyId}`, JSON.stringify(updatedOffers));
+        },
+      },
+    ]);
+  };
+
+  const resetOfferForm = () => {
+    setOfferForm({
+      amount: '',
+      earnest_money: '',
+      expiration_date: '',
+      closing_date: '',
+      notes: '',
+      contingencies: [],
+    });
+  };
+
+  const handleAddDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const file = result.assets[0];
+        const docType = await promptDocumentType();
+        if (!docType) return;
+
+        const newDoc: PropertyDocument = {
+          id: Date.now().toString(),
+          property_id: propertyId,
+          name: file.name,
+          type: docType,
+          url: file.uri,
+          file_size: file.size,
+          uploaded_by: user?.id || '',
+          created_at: new Date().toISOString(),
+        };
+
+        const updatedDocs = [...documents, newDoc];
+        setDocuments(updatedDocs);
+        await AsyncStorage.setItem(`docs_${propertyId}`, JSON.stringify(updatedDocs));
+      }
+    } catch (error) {
+      console.error('Error picking document:', error);
+      Alert.alert('Error', 'Failed to add document');
+    }
+  };
+
+  const promptDocumentType = (): Promise<PropertyDocument['type'] | null> => {
+    return new Promise((resolve) => {
+      Alert.alert(
+        'Document Type',
+        'What type of document is this?',
+        [
+          { text: 'Inspection', onPress: () => resolve('inspection') },
+          { text: 'Disclosure', onPress: () => resolve('disclosure') },
+          { text: 'Appraisal', onPress: () => resolve('appraisal') },
+          { text: 'Contract', onPress: () => resolve('contract') },
+          { text: 'Other', onPress: () => resolve('other') },
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
+        ]
+      );
+    });
+  };
+
+  const deleteDocument = async (docId: string) => {
+    Alert.alert('Delete Document', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const updatedDocs = documents.filter((d) => d.id !== docId);
+          setDocuments(updatedDocs);
+          await AsyncStorage.setItem(`docs_${propertyId}`, JSON.stringify(updatedDocs));
+        },
+      },
+    ]);
+  };
+
+  const openDocument = async (doc: PropertyDocument) => {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(doc.url);
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device');
+      }
+    } catch (error) {
+      console.error('Error opening document:', error);
+      Alert.alert('Error', 'Failed to open document');
+    }
+  };
+
+  const getOfferStatusColor = (status: OfferStatus) => {
+    switch (status) {
+      case 'draft': return colors.textMuted;
+      case 'submitted': return colors.primary;
+      case 'countered': return colors.warning;
+      case 'accepted': return colors.success;
+      case 'rejected': return colors.error;
+      case 'expired': return colors.textMuted;
+      case 'withdrawn': return colors.textMuted;
+      default: return colors.textMuted;
+    }
+  };
 
   // Load saved analysis on mount
   useEffect(() => {
@@ -200,6 +390,7 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     { key: 'overview', label: 'Overview' },
     { key: 'photos', label: 'Photos' },
     { key: 'notes', label: 'Notes' },
+    { key: 'offers', label: 'Offers' },
     { key: 'financials', label: 'Costs' },
   ];
 
@@ -852,6 +1043,148 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
           </View>
         )}
 
+        {activeTab === 'offers' && (
+          <View>
+            {/* Add Offer Button */}
+            <Button
+              title="+ Add Offer"
+              onPress={() => {
+                resetOfferForm();
+                setEditingOffer(null);
+                setShowOfferModal(true);
+              }}
+              style={styles.addOfferButton}
+            />
+
+            {/* Offers List */}
+            {offers.length === 0 ? (
+              <Card style={styles.card}>
+                <Text style={styles.emptyOffersText}>No offers yet</Text>
+                <Text style={styles.emptyOffersSubtext}>
+                  Track your offers and their status here
+                </Text>
+              </Card>
+            ) : (
+              offers.map((offer) => (
+                <Card key={offer.id} style={styles.offerCard}>
+                  <View style={styles.offerHeader}>
+                    <Text style={styles.offerAmount}>{formatCurrency(offer.amount)}</Text>
+                    <View style={[styles.offerStatusBadge, { backgroundColor: getOfferStatusColor(offer.status) + '20' }]}>
+                      <Text style={[styles.offerStatusText, { color: getOfferStatusColor(offer.status) }]}>
+                        {offer.status.replace('_', ' ').toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.offerDetails}>
+                    <Text style={styles.offerDate}>
+                      Submitted: {new Date(offer.offer_date).toLocaleDateString()}
+                    </Text>
+                    {offer.earnest_money && (
+                      <Text style={styles.offerDetail}>Earnest: {formatCurrency(offer.earnest_money)}</Text>
+                    )}
+                    {offer.expiration_date && (
+                      <Text style={styles.offerDetail}>Expires: {offer.expiration_date}</Text>
+                    )}
+                    {offer.closing_date && (
+                      <Text style={styles.offerDetail}>Closing: {offer.closing_date}</Text>
+                    )}
+                    {offer.notes && (
+                      <Text style={styles.offerNotes}>{offer.notes}</Text>
+                    )}
+                  </View>
+
+                  {/* Status Update Buttons */}
+                  <View style={styles.offerActions}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {(['submitted', 'countered', 'accepted', 'rejected', 'withdrawn'] as OfferStatus[]).map((status) => (
+                        <TouchableOpacity
+                          key={status}
+                          style={[
+                            styles.statusUpdateButton,
+                            offer.status === status && styles.statusUpdateButtonActive,
+                          ]}
+                          onPress={() => updateOfferStatus(offer.id, status)}
+                        >
+                          <Text style={[
+                            styles.statusUpdateText,
+                            offer.status === status && styles.statusUpdateTextActive,
+                          ]}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  <View style={styles.offerFooter}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditingOffer(offer);
+                        setOfferForm({
+                          amount: offer.amount.toString(),
+                          earnest_money: offer.earnest_money?.toString() || '',
+                          expiration_date: offer.expiration_date || '',
+                          closing_date: offer.closing_date || '',
+                          notes: offer.notes || '',
+                          contingencies: offer.contingencies || [],
+                        });
+                        setShowOfferModal(true);
+                      }}
+                    >
+                      <Text style={styles.offerEditText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => deleteOffer(offer.id)}>
+                      <Text style={styles.offerDeleteText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Card>
+              ))
+            )}
+
+            {/* Documents Section */}
+            <View style={styles.documentsSection}>
+              <Text style={styles.sectionTitle}>Documents</Text>
+              <Button
+                title="+ Add Document"
+                variant="outline"
+                onPress={handleAddDocument}
+                style={styles.addDocButton}
+              />
+
+              {documents.length === 0 ? (
+                <Text style={styles.emptyDocsText}>
+                  Store inspection reports, disclosures, and other documents here
+                </Text>
+              ) : (
+                documents.map((doc) => (
+                  <TouchableOpacity
+                    key={doc.id}
+                    style={styles.documentCard}
+                    onPress={() => openDocument(doc)}
+                  >
+                    <View style={styles.docIcon}>
+                      <Text style={styles.docIconText}>
+                        {doc.type === 'inspection' ? '🔍' :
+                         doc.type === 'disclosure' ? '📋' :
+                         doc.type === 'appraisal' ? '💰' :
+                         doc.type === 'contract' ? '📝' : '📄'}
+                      </Text>
+                    </View>
+                    <View style={styles.docInfo}>
+                      <Text style={styles.docName} numberOfLines={1}>{doc.name}</Text>
+                      <Text style={styles.docType}>{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => deleteDocument(doc.id)}>
+                      <Text style={styles.docDelete}>×</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          </View>
+        )}
+
         {activeTab === 'financials' && (
           <View>
             <Card style={styles.card}>
@@ -1226,6 +1559,123 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
                 </View>
               </View>
             )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Offer Modal */}
+      <Modal
+        visible={showOfferModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowOfferModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {editingOffer ? 'Edit Offer' : 'New Offer'}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setShowOfferModal(false);
+                setEditingOffer(null);
+                resetOfferForm();
+              }}
+            >
+              <Text style={styles.modalCloseText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} contentContainerStyle={styles.offerFormContent}>
+            <View style={styles.offerFormGroup}>
+              <Text style={styles.offerFormLabel}>Offer Amount *</Text>
+              <TextInput
+                style={styles.offerFormInput}
+                placeholder="500000"
+                value={offerForm.amount}
+                onChangeText={(v) => setOfferForm({ ...offerForm, amount: v.replace(/[^0-9]/g, '') })}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            <View style={styles.offerFormGroup}>
+              <Text style={styles.offerFormLabel}>Earnest Money Deposit</Text>
+              <TextInput
+                style={styles.offerFormInput}
+                placeholder="10000"
+                value={offerForm.earnest_money}
+                onChangeText={(v) => setOfferForm({ ...offerForm, earnest_money: v.replace(/[^0-9]/g, '') })}
+                keyboardType="number-pad"
+              />
+            </View>
+
+            <View style={styles.offerFormGroup}>
+              <Text style={styles.offerFormLabel}>Offer Expiration Date</Text>
+              <TextInput
+                style={styles.offerFormInput}
+                placeholder="MM/DD/YYYY"
+                value={offerForm.expiration_date}
+                onChangeText={(v) => setOfferForm({ ...offerForm, expiration_date: v })}
+              />
+            </View>
+
+            <View style={styles.offerFormGroup}>
+              <Text style={styles.offerFormLabel}>Proposed Closing Date</Text>
+              <TextInput
+                style={styles.offerFormInput}
+                placeholder="MM/DD/YYYY"
+                value={offerForm.closing_date}
+                onChangeText={(v) => setOfferForm({ ...offerForm, closing_date: v })}
+              />
+            </View>
+
+            <View style={styles.offerFormGroup}>
+              <Text style={styles.offerFormLabel}>Contingencies</Text>
+              <View style={styles.contingencyList}>
+                {['Financing', 'Inspection', 'Appraisal', 'Sale of Home'].map((cont) => (
+                  <TouchableOpacity
+                    key={cont}
+                    style={[
+                      styles.contingencyChip,
+                      offerForm.contingencies.includes(cont) && styles.contingencyChipActive,
+                    ]}
+                    onPress={() => {
+                      const newCont = offerForm.contingencies.includes(cont)
+                        ? offerForm.contingencies.filter((c) => c !== cont)
+                        : [...offerForm.contingencies, cont];
+                      setOfferForm({ ...offerForm, contingencies: newCont });
+                    }}
+                  >
+                    <Text style={[
+                      styles.contingencyText,
+                      offerForm.contingencies.includes(cont) && styles.contingencyTextActive,
+                    ]}>
+                      {offerForm.contingencies.includes(cont) ? '✓ ' : ''}{cont}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.offerFormGroup}>
+              <Text style={styles.offerFormLabel}>Notes</Text>
+              <TextInput
+                style={[styles.offerFormInput, styles.offerFormTextarea]}
+                placeholder="Additional terms, conditions, or notes..."
+                value={offerForm.notes}
+                onChangeText={(v) => setOfferForm({ ...offerForm, notes: v })}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+
+            <Button
+              title={editingOffer ? 'Update Offer' : 'Create Offer'}
+              onPress={() => saveOffer({})}
+              fullWidth
+              style={styles.saveOfferButton}
+            />
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -1968,5 +2418,214 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.md,
     lineHeight: 20,
+  },
+  // Offers & Documents styles
+  addOfferButton: {
+    marginBottom: spacing.md,
+  },
+  emptyOffersText: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  emptyOffersSubtext: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  offerCard: {
+    marginBottom: spacing.md,
+  },
+  offerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  offerAmount: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  offerStatusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  offerStatusText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+  },
+  offerDetails: {
+    marginBottom: spacing.sm,
+  },
+  offerDate: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  offerDetail: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  offerNotes: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+  },
+  offerActions: {
+    marginBottom: spacing.sm,
+  },
+  statusUpdateButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceSecondary,
+    marginRight: spacing.xs,
+  },
+  statusUpdateButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  statusUpdateText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  statusUpdateTextActive: {
+    color: colors.textInverse,
+    fontWeight: fontWeight.semibold,
+  },
+  offerFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  offerEditText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+  },
+  offerDeleteText: {
+    fontSize: fontSize.sm,
+    color: colors.error,
+    fontWeight: fontWeight.medium,
+  },
+  documentsSection: {
+    marginTop: spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  addDocButton: {
+    marginBottom: spacing.md,
+  },
+  emptyDocsText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
+  documentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  docIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  docIconText: {
+    fontSize: 20,
+  },
+  docInfo: {
+    flex: 1,
+  },
+  docName: {
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+    fontWeight: fontWeight.medium,
+  },
+  docType: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  docDelete: {
+    fontSize: 24,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.sm,
+  },
+  // Offer Modal styles
+  offerFormContent: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  offerFormGroup: {
+    marginBottom: spacing.lg,
+  },
+  offerFormLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  offerFormInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: fontSize.md,
+    backgroundColor: colors.surface,
+  },
+  offerFormTextarea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  contingencyList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  contingencyChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  contingencyChipActive: {
+    backgroundColor: colors.primary + '20',
+    borderColor: colors.primary,
+  },
+  contingencyText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  contingencyTextActive: {
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+  },
+  saveOfferButton: {
+    marginTop: spacing.md,
   },
 });

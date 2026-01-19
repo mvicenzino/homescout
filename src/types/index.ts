@@ -193,6 +193,44 @@ export interface Tour {
   created_at: string;
 }
 
+export type OfferStatus =
+  | 'draft'
+  | 'submitted'
+  | 'countered'
+  | 'accepted'
+  | 'rejected'
+  | 'expired'
+  | 'withdrawn';
+
+export interface Offer {
+  id: string;
+  property_id: string;
+  amount: number;
+  offer_date: string;
+  expiration_date?: string;
+  status: OfferStatus;
+  contingencies?: string[];
+  earnest_money?: number;
+  closing_date?: string;
+  notes?: string;
+  counter_amount?: number;
+  counter_notes?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PropertyDocument {
+  id: string;
+  property_id: string;
+  name: string;
+  type: 'inspection' | 'disclosure' | 'appraisal' | 'contract' | 'other';
+  url: string;
+  file_size?: number;
+  uploaded_by: string;
+  created_at: string;
+}
+
 export interface FinancialScenario {
   id: string;
   property_id: string;
@@ -264,6 +302,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
+  Map: undefined;
   Compare: undefined;
   Calculators: undefined;
   Settings: undefined;

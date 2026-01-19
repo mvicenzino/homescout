@@ -19,6 +19,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { PropertyDetailScreen } from '../screens/PropertyDetailScreen';
 import { AddPropertyScreen } from '../screens/AddPropertyScreen';
 import { CompareScreen } from '../screens/CompareScreen';
+import { MapScreen } from '../screens/MapScreen';
 import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 
@@ -63,6 +64,18 @@ function TabBarIcon({ name, focused }: { name: string; focused: boolean }) {
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Rect x="3" y="3" width="7" height="18" rx="1" stroke={color} strokeWidth={strokeWidth} />
         <Rect x="14" y="3" width="7" height="18" rx="1" stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
+    ),
+    Map: (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Circle cx="12" cy="10" r="3" stroke={color} strokeWidth={strokeWidth} />
       </Svg>
     ),
     Calculators: (
@@ -159,6 +172,7 @@ function MainNavigator() {
         component={HomeNavigator}
         options={{ headerShown: false }}
       />
+      <MainTab.Screen name="Map" component={MapScreen} />
       <MainTab.Screen name="Compare" component={CompareScreen} />
       <MainTab.Screen name="Calculators" component={CalculatorsScreen} />
       <MainTab.Screen name="Settings" component={SettingsScreen} />

@@ -94,17 +94,19 @@ export function AddPropertyScreen({ navigation, route }: Props) {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Paste JSON', 'Take Photo', 'Choose from Library', 'Select PDF'],
+          options: ['Cancel', 'Paste Image', 'Paste JSON', 'Take Photo', 'Choose from Library', 'Select PDF'],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            handlePasteText();
+            handlePasteImage();
           } else if (buttonIndex === 2) {
-            handleImageImport('camera');
+            handlePasteText();
           } else if (buttonIndex === 3) {
-            handleImageImport('library');
+            handleImageImport('camera');
           } else if (buttonIndex === 4) {
+            handleImageImport('library');
+          } else if (buttonIndex === 5) {
             handleImageImport('pdf');
           }
         }
@@ -115,12 +117,50 @@ export function AddPropertyScreen({ navigation, route }: Props) {
         'Choose how to import your spec sheet',
         [
           { text: 'Cancel', style: 'cancel' },
+          { text: 'Paste Image', onPress: handlePasteImage },
           { text: 'Paste JSON', onPress: handlePasteText },
           { text: 'Take Photo', onPress: () => handleImageImport('camera') },
           { text: 'Choose from Library', onPress: () => handleImageImport('library') },
           { text: 'Select PDF', onPress: () => handleImageImport('pdf') },
         ]
       );
+    }
+  };
+
+  const handlePasteImage = async () => {
+    if (!hasAnthropicKey) {
+      Alert.alert(
+        'API Key Required',
+        'Please add your Claude API key in Settings to use image import.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Go to Settings', onPress: () => navigation.getParent()?.navigate('Settings') },
+        ]
+      );
+      return;
+    }
+
+    try {
+      const hasImage = await Clipboard.hasImageAsync();
+
+      if (!hasImage) {
+        Alert.alert(
+          'No Image Found',
+          'Copy an image to your clipboard first (long-press an image in Photos and tap Copy), then try again.'
+        );
+        return;
+      }
+
+      const clipboardImage = await Clipboard.getImageAsync({ format: 'png' });
+
+      if (clipboardImage && clipboardImage.data) {
+        await processImage(clipboardImage.data, 'image/png');
+      } else {
+        Alert.alert('Error', 'Could not read image from clipboard');
+      }
+    } catch (error) {
+      console.error('Error pasting image:', error);
+      Alert.alert('Error', 'Failed to paste image from clipboard');
     }
   };
 
@@ -526,7 +566,7 @@ export function AddPropertyScreen({ navigation, route }: Props) {
               disabled={isImporting}
             />
             <Text style={styles.importHint}>
-              Paste JSON from your listing to auto-fill property details
+              Paste an image or JSON to auto-fill property details
             </Text>
           </View>
         )}
