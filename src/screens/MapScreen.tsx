@@ -13,7 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { usePropertyStore } from '../store/propertyStore';
 import { colors, spacing, fontSize, fontWeight } from '../constants/theme';
 import { Property, HomeStackParamList } from '../types';
-import { formatPrice } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 
 interface GeocodedProperty extends Property {
   latitude: number;
@@ -194,7 +194,7 @@ export function MapScreen() {
             <Callout onPress={() => handleCalloutPress(property)}>
               <View style={styles.callout}>
                 <Text style={styles.calloutPrice}>
-                  {formatPrice(property.price)}
+                  {formatCurrency(property.price)}
                 </Text>
                 <Text style={styles.calloutAddress} numberOfLines={1}>
                   {property.address}
