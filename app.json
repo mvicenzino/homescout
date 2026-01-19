@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "HomeScout",
-    "slug": "HomeScout",
+    "slug": "homescout",
+    "scheme": "homescout",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,21 +11,47 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2563EB"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vicenzino.homescout",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow HomeScout to access your photos to add property images.",
+        "NSCameraUsageDescription": "Allow HomeScout to take photos of properties."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#2563EB"
       },
+      "package": "com.vicenzino.homescout",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow HomeScout to access your photos to add property images.",
+          "cameraPermission": "Allow HomeScout to take photos of properties."
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4b2a15d2-842a-4fac-9ae8-80397697d599"
+      }
+    },
+    "owner": "kindora-family-inc"
   }
 }

@@ -1,0 +1,17 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="56" fill="#2563EB"/>
+
+  <!-- House shape -->
+  <path d="M60 25L30 50V85C30 87.2 31.8 89 34 89H50V67C50 64.8 51.8 63 54 63H66C68.2 63 70 64.8 70 67V89H86C88.2 89 90 87.2 90 85V50L60 25Z" fill="white"/>
+
+  <!-- Roof accent -->
+  <path d="M60 25L30 50L36 50L60 31L84 50L90 50L60 25Z" fill="#1D4ED8"/>
+
+  <!-- Window/Scout element - magnifying glass integrated -->
+  <circle cx="60" cy="55" r="10" fill="#2563EB" stroke="white" stroke-width="3"/>
+  <line x1="67" y1="62" x2="74" y2="69" stroke="white" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Heart inside house (couples theme) -->
+  <path d="M60 76C60 76 52 70 52 66C52 63.5 54 62 56.5 62C58.5 62 60 63.5 60 65C60 63.5 61.5 62 63.5 62C66 62 68 63.5 68 66C68 70 60 76 60 76Z" fill="#EF4444"/>
+</svg>
