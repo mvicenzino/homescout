@@ -54,7 +54,7 @@ const statusOptions: PropertyStatus[] = [
 ];
 
 export function HomeScreen({ navigation }: Props) {
-  const { properties, isLoading, fetchProperties, updatePropertyStatus } = usePropertyStore();
+  const { properties, isLoading, fetchProperties, updatePropertyStatus, selectedPropertyIds, togglePropertySelection } = usePropertyStore();
   const [filter, setFilter] = useState<FilterOption>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -128,12 +128,23 @@ export function HomeScreen({ navigation }: Props) {
 
   const renderProperty = ({ item }: { item: Property }) => {
     const status = statusConfig[item.status];
+    const isSelectedForCompare = selectedPropertyIds.includes(item.id);
 
     return (
       <Card
-        style={styles.propertyCard}
+        style={[styles.propertyCard, isSelectedForCompare && styles.propertyCardSelected]}
         onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.id })}
       >
+        {/* Compare Button */}
+        <TouchableOpacity
+          style={[styles.compareButton, isSelectedForCompare && styles.compareButtonActive]}
+          onPress={() => togglePropertySelection(item.id)}
+        >
+          <Text style={[styles.compareButtonText, isSelectedForCompare && styles.compareButtonTextActive]}>
+            {isSelectedForCompare ? '✓' : '+'}
+          </Text>
+        </TouchableOpacity>
+
         {/* Price and Status Row */}
         <View style={styles.topRow}>
           <Text style={styles.propertyPrice}>{formatCurrency(item.price)}</Text>
@@ -199,6 +210,21 @@ export function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* Comparison Banner */}
+      {selectedPropertyIds.length > 0 && (
+        <TouchableOpacity
+          style={styles.compareBanner}
+          onPress={() => navigation.getParent()?.navigate('Compare')}
+        >
+          <Text style={styles.compareBannerText}>
+            {selectedPropertyIds.length} {selectedPropertyIds.length === 1 ? 'property' : 'properties'} selected
+          </Text>
+          <Text style={styles.compareBannerAction}>
+            {selectedPropertyIds.length >= 2 ? 'Compare Now →' : 'Select 1 more to compare'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Properties</Text>
@@ -325,6 +351,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  compareBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  compareBannerText: {
+    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+  compareBannerAction: {
+    color: colors.textInverse,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -420,6 +464,38 @@ const styles = StyleSheet.create({
   propertyCard: {
     marginBottom: spacing.md,
     padding: spacing.md,
+    position: 'relative',
+  },
+  propertyCardSelected: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  compareButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    zIndex: 10,
+  },
+  compareButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  compareButtonText: {
+    fontSize: 18,
+    color: colors.textMuted,
+    fontWeight: '300',
+  },
+  compareButtonTextActive: {
+    color: colors.textInverse,
+    fontWeight: '600',
   },
   topRow: {
     flexDirection: 'row',
