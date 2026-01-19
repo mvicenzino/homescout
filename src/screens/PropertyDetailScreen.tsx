@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card, Badge, getStatusBadgeVariant, StarRating, Button } from '../components/ui';
 import { usePropertyStore, getPropertyWithRatings } from '../store/propertyStore';
@@ -333,6 +334,34 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
       // In production, upload to Supabase Storage
       // For now, just use the local URI
       await addPhoto(property.id, result.assets[0].uri);
+    }
+  };
+
+  const handlePastePhoto = async () => {
+    try {
+      const hasImage = await Clipboard.hasImageAsync();
+
+      if (!hasImage) {
+        Alert.alert(
+          'No Image Found',
+          'Copy an image to your clipboard first (long-press an image and tap Copy), then try again.'
+        );
+        return;
+      }
+
+      const clipboardImage = await Clipboard.getImageAsync({ format: 'png' });
+
+      if (clipboardImage && clipboardImage.data) {
+        // Use data URI directly
+        const dataUri = `data:image/png;base64,${clipboardImage.data}`;
+        await addPhoto(property.id, dataUri);
+        Alert.alert('Success', 'Photo added from clipboard');
+      } else {
+        Alert.alert('Error', 'Could not read image from clipboard');
+      }
+    } catch (error) {
+      console.error('Error pasting photo:', error);
+      Alert.alert('Error', 'Failed to paste photo from clipboard');
     }
   };
 
@@ -958,9 +987,17 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
 
         {activeTab === 'photos' && (
           <View>
-            <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
-              <Text style={styles.addPhotoText}>+ Add Photo</Text>
-            </TouchableOpacity>
+            <View style={styles.photoButtonsRow}>
+              <TouchableOpacity style={styles.addPhotoButton} onPress={handlePickImage}>
+                <Text style={styles.addPhotoText}>+ From Library</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.pastePhotoButton} onPress={handlePastePhoto}>
+                <Text style={styles.pastePhotoText}>📋 Paste Photo</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.photoHint}>
+              Tip: Copy images from Redfin or Zillow, then tap "Paste Photo"
+            </Text>
             <View style={styles.photoGrid}>
               {property.photos?.map((photo) => (
                 <Image
@@ -1999,12 +2036,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.xxl,
   },
+  photoButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   addPhotoButton: {
+    flex: 1,
     backgroundColor: colors.surfaceSecondary,
-    padding: spacing.lg,
+    padding: spacing.md,
     borderRadius: borderRadius.md,
     alignItems: 'center',
-    marginBottom: spacing.md,
     borderWidth: 2,
     borderColor: colors.border,
     borderStyle: 'dashed',
@@ -2012,6 +2054,25 @@ const styles = StyleSheet.create({
   addPhotoText: {
     color: colors.primary,
     fontWeight: fontWeight.semibold,
+  },
+  pastePhotoButton: {
+    flex: 1,
+    backgroundColor: colors.primary + '15',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  pastePhotoText: {
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
+  },
+  photoHint: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   photoGrid: {
     flexDirection: 'row',
