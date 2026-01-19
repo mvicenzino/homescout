@@ -8,11 +8,17 @@ import {
   Dimensions,
 } from 'react-native';
 import MapView, { Marker, Callout, Region } from 'react-native-maps';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { usePropertyStore } from '../store/propertyStore';
 import { colors, spacing, fontSize, fontWeight } from '../constants/theme';
-import { Property, HomeStackParamList } from '../types';
+import { Property, HomeStackParamList, MainTabParamList } from '../types';
+
+type MapScreenNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Map'>,
+  NativeStackNavigationProp<HomeStackParamList>
+>;
 import { formatCurrency } from '../lib/formatters';
 
 interface GeocodedProperty extends Property {
@@ -89,7 +95,7 @@ function getMarkerColor(status: Property['status']): string {
 }
 
 export function MapScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList>>();
+  const navigation = useNavigation<MapScreenNavigationProp>();
   const { properties } = usePropertyStore();
   const mapRef = useRef<MapView>(null);
 
@@ -150,7 +156,11 @@ export function MapScreen() {
   };
 
   const handleCalloutPress = (property: GeocodedProperty) => {
-    navigation.navigate('PropertyDetail', { propertyId: property.id });
+    // Navigate to Home tab, then to PropertyDetail within the Home stack
+    navigation.navigate('Home', {
+      screen: 'PropertyDetail',
+      params: { propertyId: property.id },
+    } as any);
   };
 
   const initialRegion: Region = {
