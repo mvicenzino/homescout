@@ -15,6 +15,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { usePropertyStore } from '../store/propertyStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { resetOnboarding } from './auth/OnboardingScreen';
+import { UserType } from '../types';
 
 export function SettingsScreen() {
   const { user, household, signOut, updateProfile } = useAuthStore();
@@ -175,6 +176,32 @@ export function SettingsScreen() {
     );
   };
 
+  const handleChangeUserType = async (newType: UserType) => {
+    if (newType === user?.user_type) return;
+
+    Alert.alert(
+      'Change Account Type',
+      `Switch to ${newType === 'broker' ? 'Real Estate Professional' : 'Home Buyer'} mode?\n\nThis will change your app layout and available features.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Switch',
+          onPress: async () => {
+            const result = await updateProfile({ user_type: newType });
+            if (result.error) {
+              Alert.alert('Error', result.error);
+            } else {
+              Alert.alert(
+                'Success',
+                `Switched to ${newType === 'broker' ? 'Real Estate Professional' : 'Home Buyer'} mode. The app will refresh with your new layout.`
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Calculate stats
   const stats = {
     totalProperties: properties.length,
@@ -208,6 +235,60 @@ export function SettingsScreen() {
             variant="outline"
             size="sm"
           />
+        </Card>
+
+        {/* Account Type Section */}
+        <Card style={styles.card}>
+          <Text style={styles.sectionTitle}>Account Type</Text>
+          <Text style={styles.accountTypeDescription}>
+            Choose how you use HomeScout to customize your experience
+          </Text>
+
+          <View style={styles.accountTypeOptions}>
+            <TouchableOpacity
+              style={[
+                styles.accountTypeOption,
+                user?.user_type === 'individual' && styles.accountTypeOptionActive,
+              ]}
+              onPress={() => handleChangeUserType('individual')}
+            >
+              <Text style={styles.accountTypeIcon}>🏠</Text>
+              <View style={styles.accountTypeContent}>
+                <Text style={[
+                  styles.accountTypeTitle,
+                  user?.user_type === 'individual' && styles.accountTypeTitleActive,
+                ]}>Home Buyer</Text>
+                <Text style={styles.accountTypeHint}>
+                  Map, Compare, Calculators
+                </Text>
+              </View>
+              {user?.user_type === 'individual' && (
+                <Text style={styles.accountTypeCheck}>✓</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.accountTypeOption,
+                user?.user_type === 'broker' && styles.accountTypeOptionActive,
+              ]}
+              onPress={() => handleChangeUserType('broker')}
+            >
+              <Text style={styles.accountTypeIcon}>💼</Text>
+              <View style={styles.accountTypeContent}>
+                <Text style={[
+                  styles.accountTypeTitle,
+                  user?.user_type === 'broker' && styles.accountTypeTitleActive,
+                ]}>Real Estate Pro</Text>
+                <Text style={styles.accountTypeHint}>
+                  Dashboard, Showings, Clients
+                </Text>
+              </View>
+              {user?.user_type === 'broker' && (
+                <Text style={styles.accountTypeCheck}>✓</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </Card>
 
         {/* Household Section */}
@@ -746,5 +827,52 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     textDecorationLine: 'underline',
+  },
+  // Account Type Styles
+  accountTypeDescription: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  accountTypeOptions: {
+    gap: spacing.sm,
+  },
+  accountTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  accountTypeOptionActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '08',
+  },
+  accountTypeIcon: {
+    fontSize: 28,
+    marginRight: spacing.md,
+  },
+  accountTypeContent: {
+    flex: 1,
+  },
+  accountTypeTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  accountTypeTitleActive: {
+    color: colors.primary,
+  },
+  accountTypeHint: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  accountTypeCheck: {
+    fontSize: fontSize.lg,
+    color: colors.primary,
+    fontWeight: fontWeight.bold,
   },
 });

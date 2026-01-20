@@ -172,8 +172,9 @@ function HomeNavigator() {
 }
 
 function MainNavigator() {
-  const { household } = useAuthStore();
+  const { user, household } = useAuthStore();
   const { fetchProperties, subscribeToChanges } = usePropertyStore();
+  const isBroker = user?.user_type === 'broker';
 
   useEffect(() => {
     fetchProperties();
@@ -184,6 +185,34 @@ function MainNavigator() {
     }
   }, [household?.id]);
 
+  // Different tab layouts based on user type
+  if (isBroker) {
+    // Broker view: Dashboard, Properties, Showings, Clients, Settings
+    return (
+      <MainTab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused }) => (
+            <TabBarIcon name={route.name} focused={focused} />
+          ),
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
+          headerShown: route.name !== 'Home',
+        })}
+      >
+        <MainTab.Screen name="Dashboard" component={DashboardScreen} />
+        <MainTab.Screen
+          name="Home"
+          component={HomeNavigator}
+          options={{ headerShown: false, title: 'Properties' }}
+        />
+        <MainTab.Screen name="Showings" component={ShowingsScreen} />
+        <MainTab.Screen name="Clients" component={ClientsScreen} />
+        <MainTab.Screen name="Settings" component={SettingsScreen} />
+      </MainTab.Navigator>
+    );
+  }
+
+  // Individual/Home Buyer view: Properties, Map, Compare, Calculators, Settings
   return (
     <MainTab.Navigator
       screenOptions={({ route }) => ({
@@ -195,15 +224,12 @@ function MainNavigator() {
         headerShown: route.name !== 'Home',
       })}
     >
-      <MainTab.Screen name="Dashboard" component={DashboardScreen} />
       <MainTab.Screen
         name="Home"
         component={HomeNavigator}
         options={{ headerShown: false, title: 'Properties' }}
       />
       <MainTab.Screen name="Map" component={MapScreen} />
-      <MainTab.Screen name="Showings" component={ShowingsScreen} />
-      <MainTab.Screen name="Clients" component={ClientsScreen} />
       <MainTab.Screen name="Compare" component={CompareScreen} />
       <MainTab.Screen name="Calculators" component={CalculatorsScreen} />
       <MainTab.Screen name="Settings" component={SettingsScreen} />

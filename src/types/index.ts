@@ -34,12 +34,15 @@ export interface CommuteDestination {
   address: string;
 }
 
+export type UserType = 'individual' | 'broker';
+
 export interface User {
   id: string;
   household_id: string;
   email: string;
   name: string;
   avatar_url?: string;
+  user_type: UserType;
   preferences: UserPreferences;
   created_at: string;
 }

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
-import { User, Household } from '../types';
+import { User, Household, UserType } from '../types';
 
 // Required for Google OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -16,7 +16,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<{ error?: string }>;
+  signUp: (email: string, password: string, name: string, userType?: UserType) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -90,7 +90,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signUp: async (email: string, password: string, name: string) => {
+  signUp: async (email: string, password: string, name: string, userType: UserType = 'individual') => {
     set({ isLoading: true });
 
     try {
@@ -105,13 +105,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (data.user) {
-        // Create user profile
+        // Create user profile with user_type
         const { error: profileError } = await supabase
           .from('users')
           .insert({
             id: data.user.id,
             email,
             name,
+            user_type: userType,
             preferences: {},
           });
 
@@ -124,6 +125,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           id: data.user.id,
           email,
           name,
+          user_type: userType,
           household_id: '',
           preferences: {},
           created_at: new Date().toISOString(),
@@ -168,6 +170,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               id: data.user.id,
               email: data.user.email || email,
               name: data.user.user_metadata?.full_name || email.split('@')[0],
+              user_type: 'individual',
               preferences: {},
             })
             .select()
@@ -261,6 +264,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     email: sessionData.user.email || '',
                     name: sessionData.user.user_metadata?.full_name || sessionData.user.email?.split('@')[0] || 'User',
                     avatar_url: sessionData.user.user_metadata?.avatar_url,
+                    user_type: 'individual',
                     preferences: {},
                   })
                   .select()
