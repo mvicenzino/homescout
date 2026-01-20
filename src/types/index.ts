@@ -301,8 +301,11 @@ export type AuthStackParamList = {
 };
 
 export type MainTabParamList = {
+  Dashboard: undefined;
   Home: undefined;
   Map: undefined;
+  Showings: undefined;
+  Clients: undefined;
   Compare: undefined;
   Calculators: undefined;
   Settings: undefined;
@@ -313,6 +316,82 @@ export type HomeStackParamList = {
   PropertyDetail: { propertyId: string };
   AddProperty: { propertyId?: string };
 };
+
+// Showing/Tour Scheduling
+export interface Showing {
+  id: string;
+  property_id: string;
+  client_id?: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  duration_minutes: number;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  notes?: string;
+  feedback?: string;
+  rating?: number;
+  follow_up_date?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Client Management (for brokers)
+export interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  status: 'active' | 'inactive' | 'closed';
+  source?: string; // referral, website, zillow, etc.
+  budget_min?: number;
+  budget_max?: number;
+  preferred_beds?: number;
+  preferred_baths?: number;
+  preferred_locations?: string[];
+  timeline?: string; // 'immediately' | '1-3 months' | '3-6 months' | '6+ months'
+  pre_approved?: boolean;
+  pre_approval_amount?: number;
+  notes?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Activity Tracking
+export type ActivityType =
+  | 'property_added'
+  | 'status_changed'
+  | 'note_added'
+  | 'photo_added'
+  | 'showing_scheduled'
+  | 'showing_completed'
+  | 'offer_made'
+  | 'offer_updated'
+  | 'document_added'
+  | 'price_change'
+  | 'rating_added';
+
+export interface Activity {
+  id: string;
+  property_id: string;
+  type: ActivityType;
+  description: string;
+  metadata?: Record<string, any>;
+  created_by: string;
+  created_at: string;
+}
+
+// Price History Tracking
+export interface PriceHistory {
+  id: string;
+  property_id: string;
+  price: number;
+  date: string;
+  change_type: 'initial' | 'increase' | 'decrease';
+  change_amount?: number;
+  change_percent?: number;
+  created_at: string;
+}
 
 // Financial Profile for AI-powered analysis
 export interface FinancialProfile {

@@ -39,14 +39,14 @@ import {
   formatDaysOnMarket,
 } from '../lib/formatters';
 import { calculateTotalMonthlyCost } from '../lib/calculators';
-import { HomeStackParamList, PropertyStatus, NoteType, Offer, OfferStatus, PropertyDocument } from '../types';
+import { HomeStackParamList, PropertyStatus, NoteType, Offer, OfferStatus, PropertyDocument, Activity, ActivityType } from '../types';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PropertyDetail'>;
   route: RouteProp<HomeStackParamList, 'PropertyDetail'>;
 };
 
-type Tab = 'overview' | 'photos' | 'notes' | 'offers' | 'financials';
+type Tab = 'overview' | 'photos' | 'notes' | 'offers' | 'activity' | 'financials';
 
 const statusOptions: { value: PropertyStatus; label: string }[] = [
   { value: 'interested', label: 'Interested' },
@@ -95,7 +95,10 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
   // Documents state
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
 
-  // Load offers and documents
+  // Activities state
+  const [activities, setActivities] = useState<Activity[]>([]);
+
+  // Load offers, documents, and activities
   useEffect(() => {
     loadOffersAndDocs();
   }, [propertyId]);
@@ -104,6 +107,9 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     try {
       const offersData = await AsyncStorage.getItem(`offers_${propertyId}`);
       if (offersData) setOffers(JSON.parse(offersData));
+
+      const activitiesData = await AsyncStorage.getItem(`activities_${propertyId}`);
+      if (activitiesData) setActivities(JSON.parse(activitiesData));
 
       const docsData = await AsyncStorage.getItem(`docs_${propertyId}`);
       if (docsData) setDocuments(JSON.parse(docsData));
@@ -249,6 +255,50 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     } catch (error) {
       console.error('Error opening document:', error);
       Alert.alert('Error', 'Failed to open document');
+    }
+  };
+
+  const logActivity = async (type: ActivityType, description: string, metadata?: Record<string, any>) => {
+    const newActivity: Activity = {
+      id: Date.now().toString(),
+      property_id: propertyId,
+      type,
+      description,
+      metadata,
+      created_by: user?.id || '',
+      created_at: new Date().toISOString(),
+    };
+
+    const updatedActivities = [newActivity, ...activities];
+    setActivities(updatedActivities);
+    await AsyncStorage.setItem(`activities_${propertyId}`, JSON.stringify(updatedActivities));
+
+    // Also save to global activities for dashboard
+    try {
+      const globalActivitiesData = await AsyncStorage.getItem('activities');
+      const globalActivities = globalActivitiesData ? JSON.parse(globalActivitiesData) : [];
+      globalActivities.unshift(newActivity);
+      // Keep only last 100 activities globally
+      await AsyncStorage.setItem('activities', JSON.stringify(globalActivities.slice(0, 100)));
+    } catch (error) {
+      console.error('Error saving global activity:', error);
+    }
+  };
+
+  const getActivityIcon = (type: ActivityType) => {
+    switch (type) {
+      case 'property_added': return '🏠';
+      case 'status_changed': return '📊';
+      case 'note_added': return '📝';
+      case 'photo_added': return '📷';
+      case 'showing_scheduled': return '📅';
+      case 'showing_completed': return '✅';
+      case 'offer_made': return '💰';
+      case 'offer_updated': return '📋';
+      case 'document_added': return '📄';
+      case 'price_change': return '💵';
+      case 'rating_added': return '⭐';
+      default: return '📌';
     }
   };
 
@@ -422,11 +472,84 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  const handleShareProperty = async () => {
+    const propertyDetails = `
+${property.address}
+${property.city}, ${property.state} ${property.zip}
+
+Price: ${formatCurrency(property.price)}
+${property.beds} beds • ${property.baths} baths • ${formatSqft(property.sqft)}
+${property.price_per_sqft ? `Price per sqft: ${formatPricePerSqft(property.price, property.sqft)}` : ''}
+${property.year_built ? `Year built: ${property.year_built}` : ''}
+${property.lot_acres ? `Lot: ${property.lot_acres} acres` : ''}
+
+Monthly Cost Estimate: ${formatCurrencyWithCents(monthlyCost.total)}/mo
+• Principal & Interest: ${formatCurrencyWithCents(monthlyCost.principal_interest)}
+• Property Tax: ${formatCurrencyWithCents(monthlyCost.property_tax)}
+• Insurance: ${formatCurrencyWithCents(monthlyCost.insurance)}
+${monthlyCost.hoa > 0 ? `• HOA: ${formatCurrencyWithCents(monthlyCost.hoa)}` : ''}
+
+${property.source_url ? `View listing: ${property.source_url}` : ''}
+
+Shared from HomeScout
+`.trim();
+
+    Alert.alert(
+      'Share Property',
+      'How would you like to share?',
+      [
+        {
+          text: 'Copy to Clipboard',
+          onPress: async () => {
+            await Clipboard.setStringAsync(propertyDetails);
+            Alert.alert('Copied!', 'Property details copied to clipboard');
+          },
+        },
+        {
+          text: 'Share via SMS/Email',
+          onPress: async () => {
+            // Copy to clipboard for easy pasting into any app
+            await Clipboard.setStringAsync(propertyDetails);
+            Alert.alert(
+              'Copied!',
+              'Property details copied to clipboard. Open Messages, Email, or any app and paste to share.',
+              [{ text: 'OK' }]
+            );
+          },
+        },
+        {
+          text: 'Export Notes',
+          onPress: async () => {
+            const notesExport = `
+Property Notes: ${property.address}
+${property.city}, ${property.state} ${property.zip}
+Price: ${formatCurrency(property.price)}
+Generated: ${new Date().toLocaleDateString()}
+---
+
+${property.notes && property.notes.length > 0 ? property.notes.map(n => `[${n.type.toUpperCase()}] ${n.content}`).join('\n\n') : 'No notes yet'}
+
+---
+Pros & Cons Summary:
+${property.notes?.filter(n => n.type === 'pro').map(n => `+ ${n.content}`).join('\n') || 'No pros noted'}
+
+${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join('\n') || 'No cons noted'}
+`.trim();
+            await Clipboard.setStringAsync(notesExport);
+            Alert.alert('Copied!', 'Notes exported to clipboard');
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
     { key: 'photos', label: 'Photos' },
     { key: 'notes', label: 'Notes' },
     { key: 'offers', label: 'Offers' },
+    { key: 'activity', label: 'Activity' },
     { key: 'financials', label: 'Costs' },
   ];
 
@@ -443,12 +566,20 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
             {property.city}, {property.state} {property.zip}
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('AddProperty', { propertyId: property.id })}
-          style={styles.editButton}
-        >
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={handleShareProperty}
+            style={styles.shareButton}
+          >
+            <Text style={styles.shareButtonText}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AddProperty', { propertyId: property.id })}
+            style={styles.editButton}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Quick Stats */}
@@ -1229,6 +1360,76 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
           </View>
         )}
 
+        {activeTab === 'activity' && (
+          <View>
+            <Card style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Activity Timeline</Text>
+                <TouchableOpacity
+                  style={styles.addActivityButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Log Activity',
+                      'What happened?',
+                      [
+                        { text: 'Toured Property', onPress: () => logActivity('showing_completed', `Toured ${property.address}`) },
+                        { text: 'Made Offer', onPress: () => logActivity('offer_made', `Made offer on ${property.address}`) },
+                        { text: 'Price Changed', onPress: () => {
+                          Alert.prompt(
+                            'New Price',
+                            'Enter the new listing price',
+                            (newPrice) => {
+                              if (newPrice) {
+                                logActivity('price_change', `Price changed to ${formatCurrency(parseInt(newPrice))}`, { new_price: parseInt(newPrice) });
+                              }
+                            },
+                            'plain-text',
+                            property.price.toString()
+                          );
+                        }},
+                        { text: 'Add Note', onPress: () => logActivity('note_added', 'Added a note') },
+                        { text: 'Cancel', style: 'cancel' },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.addActivityButtonText}>+ Log</Text>
+                </TouchableOpacity>
+              </View>
+              {activities.length === 0 ? (
+                <View style={styles.emptyActivities}>
+                  <Text style={styles.emptyActivitiesIcon}>📜</Text>
+                  <Text style={styles.emptyActivitiesText}>No activity yet</Text>
+                  <Text style={styles.emptyActivitiesSubtext}>Actions like status changes, notes, and showings will appear here</Text>
+                </View>
+              ) : (
+                <View style={styles.activityTimeline}>
+                  {activities.map((activity, index) => (
+                    <View key={activity.id} style={styles.activityTimelineItem}>
+                      <View style={styles.activityTimelineDot}>
+                        <Text style={styles.activityTimelineIcon}>{getActivityIcon(activity.type)}</Text>
+                      </View>
+                      {index < activities.length - 1 && <View style={styles.activityTimelineLine} />}
+                      <View style={styles.activityTimelineContent}>
+                        <Text style={styles.activityTimelineDescription}>{activity.description}</Text>
+                        <Text style={styles.activityTimelineTime}>
+                          {new Date(activity.created_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Card>
+          </View>
+        )}
+
         {activeTab === 'financials' && (
           <View>
             <Card style={styles.card}>
@@ -1763,6 +1964,20 @@ const styles = StyleSheet.create({
   location: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  shareButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: borderRadius.md,
+  },
+  shareButtonText: {
+    color: colors.textSecondary,
+    fontWeight: fontWeight.medium,
   },
   editButton: {
     paddingVertical: spacing.xs,
@@ -2695,5 +2910,85 @@ const styles = StyleSheet.create({
   },
   saveOfferButton: {
     marginTop: spacing.md,
+  },
+  // Activity Timeline styles
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  addActivityButton: {
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  addActivityButtonText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
+  },
+  emptyActivities: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyActivitiesIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  emptyActivitiesText: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  emptyActivitiesSubtext: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
+  },
+  activityTimeline: {
+    paddingLeft: spacing.sm,
+  },
+  activityTimelineItem: {
+    flexDirection: 'row',
+    position: 'relative',
+    minHeight: 70,
+  },
+  activityTimelineDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+    zIndex: 1,
+  },
+  activityTimelineIcon: {
+    fontSize: 16,
+  },
+  activityTimelineLine: {
+    position: 'absolute',
+    left: 17,
+    top: 36,
+    bottom: 0,
+    width: 2,
+    backgroundColor: colors.border,
+  },
+  activityTimelineContent: {
+    flex: 1,
+    paddingBottom: spacing.lg,
+  },
+  activityTimelineDescription: {
+    fontSize: fontSize.md,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  activityTimelineTime: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
   },
 });

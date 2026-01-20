@@ -22,6 +22,9 @@ import { CompareScreen } from '../screens/CompareScreen';
 import { MapScreen } from '../screens/MapScreen';
 import { CalculatorsScreen } from '../screens/CalculatorsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { DashboardScreen } from '../screens/DashboardScreen';
+import { ShowingsScreen } from '../screens/ShowingsScreen';
+import { ClientsScreen } from '../screens/ClientsScreen';
 
 import {
   RootStackParamList,
@@ -105,6 +108,31 @@ function TabBarIcon({ name, focused }: { name: string; focused: boolean }) {
         />
       </Svg>
     ),
+    Dashboard: (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Rect x="3" y="3" width="7" height="7" rx="1" stroke={color} strokeWidth={strokeWidth} />
+        <Rect x="14" y="3" width="7" height="7" rx="1" stroke={color} strokeWidth={strokeWidth} />
+        <Rect x="3" y="14" width="7" height="7" rx="1" stroke={color} strokeWidth={strokeWidth} />
+        <Rect x="14" y="14" width="7" height="7" rx="1" stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
+    ),
+    Showings: (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Rect x="3" y="4" width="18" height="18" rx="2" stroke={color} strokeWidth={strokeWidth} />
+        <Line x1="16" y1="2" x2="16" y2="6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+        <Line x1="8" y1="2" x2="8" y2="6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+        <Line x1="3" y1="10" x2="21" y2="10" stroke={color} strokeWidth={strokeWidth} />
+        <Circle cx="12" cy="16" r="2" stroke={color} strokeWidth={strokeWidth} />
+      </Svg>
+    ),
+    Clients: (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Circle cx="9" cy="7" r="4" stroke={color} strokeWidth={strokeWidth} />
+        <Path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+        <Circle cx="17" cy="7" r="3" stroke={color} strokeWidth={strokeWidth} />
+        <Path d="M21 21v-2a3 3 0 00-3-3h-1" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      </Svg>
+    ),
   };
 
   return <View>{icons[name] || icons.Home}</View>;
@@ -167,12 +195,15 @@ function MainNavigator() {
         headerShown: route.name !== 'Home',
       })}
     >
+      <MainTab.Screen name="Dashboard" component={DashboardScreen} />
       <MainTab.Screen
         name="Home"
         component={HomeNavigator}
-        options={{ headerShown: false }}
+        options={{ headerShown: false, title: 'Properties' }}
       />
       <MainTab.Screen name="Map" component={MapScreen} />
+      <MainTab.Screen name="Showings" component={ShowingsScreen} />
+      <MainTab.Screen name="Clients" component={ClientsScreen} />
       <MainTab.Screen name="Compare" component={CompareScreen} />
       <MainTab.Screen name="Calculators" component={CalculatorsScreen} />
       <MainTab.Screen name="Settings" component={SettingsScreen} />

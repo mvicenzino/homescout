@@ -126,9 +126,34 @@ export function HomeScreen({ navigation }: Props) {
     }
   };
 
+  // Check if property is "Hot" (new listing or has price drop)
+  const isHotProperty = (property: Property) => {
+    // Check if listing is less than 7 days old
+    if (property.list_date) {
+      const listDate = new Date(property.list_date);
+      const daysSinceListed = Math.floor((Date.now() - listDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceListed <= 7) return true;
+    }
+    // Check if days on market is low
+    if (property.days_on_market !== undefined && property.days_on_market <= 7) return true;
+    return false;
+  };
+
+  // Check for price drop
+  const getPriceDrop = (property: Property) => {
+    if (property.original_list_price && property.original_list_price > property.price) {
+      const drop = property.original_list_price - property.price;
+      const dropPercent = (drop / property.original_list_price) * 100;
+      return { amount: drop, percent: dropPercent };
+    }
+    return null;
+  };
+
   const renderProperty = ({ item }: { item: Property }) => {
     const status = statusConfig[item.status];
     const isSelectedForCompare = selectedPropertyIds.includes(item.id);
+    const isHot = isHotProperty(item);
+    const priceDrop = getPriceDrop(item);
 
     return (
       <Card
@@ -145,9 +170,32 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
 
+        {/* Quick Action Badges */}
+        <View style={styles.quickBadges}>
+          {isHot && (
+            <View style={styles.hotBadge}>
+              <Text style={styles.hotBadgeText}>HOT</Text>
+            </View>
+          )}
+          {priceDrop && (
+            <View style={styles.priceDropBadge}>
+              <Text style={styles.priceDropBadgeText}>
+                -{priceDrop.percent.toFixed(0)}%
+              </Text>
+            </View>
+          )}
+        </View>
+
         {/* Price and Status Row */}
         <View style={styles.topRow}>
-          <Text style={styles.propertyPrice}>{formatCurrency(item.price)}</Text>
+          <View>
+            <Text style={styles.propertyPrice}>{formatCurrency(item.price)}</Text>
+            {priceDrop && (
+              <Text style={styles.originalPrice}>
+                was {formatCurrency(item.original_list_price!)}
+              </Text>
+            )}
+          </View>
           <TouchableOpacity
             style={[styles.statusTag, { backgroundColor: status.bg }]}
             onPress={() => handleStatusChange(item)}
@@ -507,6 +555,42 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
     color: colors.textPrimary,
+  },
+  originalPrice: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  quickBadges: {
+    flexDirection: 'row',
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    gap: spacing.xs,
+    zIndex: 10,
+  },
+  hotBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  hotBadgeText: {
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  priceDropBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  priceDropBadgeText: {
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    color: '#FFFFFF',
   },
   statusTag: {
     paddingVertical: 4,
