@@ -179,27 +179,11 @@ export function SettingsScreen() {
   const handleChangeUserType = async (newType: UserType) => {
     if (newType === user?.user_type) return;
 
-    Alert.alert(
-      'Change Account Type',
-      `Switch to ${newType === 'broker' ? 'Real Estate Professional' : 'Home Buyer'} mode?\n\nThis will change your app layout and available features.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Switch',
-          onPress: async () => {
-            const result = await updateProfile({ user_type: newType });
-            if (result.error) {
-              Alert.alert('Error', result.error);
-            } else {
-              Alert.alert(
-                'Success',
-                `Switched to ${newType === 'broker' ? 'Real Estate Professional' : 'Home Buyer'} mode. The app will refresh with your new layout.`
-              );
-            }
-          },
-        },
-      ]
-    );
+    const result = await updateProfile({ user_type: newType });
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    }
+    // Navigation will automatically update based on the new user_type
   };
 
   // Calculate stats
@@ -248,7 +232,7 @@ export function SettingsScreen() {
             <TouchableOpacity
               style={[
                 styles.accountTypeOption,
-                user?.user_type === 'individual' && styles.accountTypeOptionActive,
+                (user?.user_type === 'individual' || !user?.user_type) && styles.accountTypeOptionActive,
               ]}
               onPress={() => handleChangeUserType('individual')}
             >
@@ -256,13 +240,13 @@ export function SettingsScreen() {
               <View style={styles.accountTypeContent}>
                 <Text style={[
                   styles.accountTypeTitle,
-                  user?.user_type === 'individual' && styles.accountTypeTitleActive,
+                  (user?.user_type === 'individual' || !user?.user_type) && styles.accountTypeTitleActive,
                 ]}>Home Buyer</Text>
                 <Text style={styles.accountTypeHint}>
                   Map, Compare, Calculators
                 </Text>
               </View>
-              {user?.user_type === 'individual' && (
+              {(user?.user_type === 'individual' || !user?.user_type) && (
                 <Text style={styles.accountTypeCheck}>✓</Text>
               )}
             </TouchableOpacity>

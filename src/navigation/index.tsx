@@ -174,6 +174,7 @@ function HomeNavigator() {
 function MainNavigator() {
   const { user, household } = useAuthStore();
   const { fetchProperties, subscribeToChanges } = usePropertyStore();
+  // Default to individual if user_type is not set
   const isBroker = user?.user_type === 'broker';
 
   useEffect(() => {
