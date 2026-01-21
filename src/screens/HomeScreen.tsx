@@ -160,35 +160,27 @@ export function HomeScreen({ navigation }: Props) {
         style={[styles.propertyCard, isSelectedForCompare && styles.propertyCardSelected]}
         onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.id })}
       >
-        {/* Compare Button */}
-        <TouchableOpacity
-          style={[styles.compareButton, isSelectedForCompare && styles.compareButtonActive]}
-          onPress={() => togglePropertySelection(item.id)}
-        >
-          <Text style={[styles.compareButtonText, isSelectedForCompare && styles.compareButtonTextActive]}>
-            {isSelectedForCompare ? '✓' : '+'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Quick Action Badges */}
-        <View style={styles.quickBadges}>
-          {isHot && (
-            <View style={styles.hotBadge}>
-              <Text style={styles.hotBadgeText}>HOT</Text>
-            </View>
-          )}
-          {priceDrop && (
-            <View style={styles.priceDropBadge}>
-              <Text style={styles.priceDropBadgeText}>
-                -{priceDrop.percent.toFixed(0)}%
-              </Text>
-            </View>
-          )}
+        {/* Top Row: Status Tag + Compare Button */}
+        <View style={styles.topRow}>
+          <TouchableOpacity
+            style={[styles.statusTag, { backgroundColor: status.bg }]}
+            onPress={() => handleStatusChange(item)}
+          >
+            <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.compareButton, isSelectedForCompare && styles.compareButtonActive]}
+            onPress={() => togglePropertySelection(item.id)}
+          >
+            <Text style={[styles.compareButtonText, isSelectedForCompare && styles.compareButtonTextActive]}>
+              {isSelectedForCompare ? '✓' : '+'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Price and Status Row */}
-        <View style={styles.topRow}>
-          <View>
+        {/* Price Row with Badges */}
+        <View style={styles.priceRow}>
+          <View style={styles.priceContainer}>
             <Text style={styles.propertyPrice}>{formatCurrency(item.price)}</Text>
             {priceDrop && (
               <Text style={styles.originalPrice}>
@@ -196,12 +188,23 @@ export function HomeScreen({ navigation }: Props) {
               </Text>
             )}
           </View>
-          <TouchableOpacity
-            style={[styles.statusTag, { backgroundColor: status.bg }]}
-            onPress={() => handleStatusChange(item)}
-          >
-            <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-          </TouchableOpacity>
+          {/* Quick Action Badges */}
+          {(isHot || priceDrop) && (
+            <View style={styles.quickBadges}>
+              {isHot && (
+                <View style={styles.hotBadge}>
+                  <Text style={styles.hotBadgeText}>HOT</Text>
+                </View>
+              )}
+              {priceDrop && (
+                <View style={styles.priceDropBadge}>
+                  <Text style={styles.priceDropBadgeText}>
+                    -{priceDrop.percent.toFixed(0)}%
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Address */}
@@ -519,9 +522,6 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   compareButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    zIndex: 10,
+    marginLeft: spacing.sm,
   },
   compareButtonActive: {
     backgroundColor: colors.primary,
@@ -549,7 +549,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: spacing.xs,
+  },
+  priceContainer: {
+    flex: 1,
   },
   propertyPrice: {
     fontSize: fontSize.xxl,
@@ -563,11 +572,8 @@ const styles = StyleSheet.create({
   },
   quickBadges: {
     flexDirection: 'row',
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
     gap: spacing.xs,
-    zIndex: 10,
+    marginLeft: spacing.sm,
   },
   hotBadge: {
     backgroundColor: '#EF4444',
