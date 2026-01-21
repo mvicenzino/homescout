@@ -6,16 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Card } from '../components/ui';
 import { usePropertyStore } from '../store/propertyStore';
 import { useAuthStore } from '../store/authStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { formatCurrency } from '../lib/formatters';
 import { Showing, Client, Activity } from '../types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function DashboardScreen() {
   const navigation = useNavigation<any>();
@@ -123,7 +127,36 @@ export function DashboardScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={styles.container}>
+      {/* Header Banner */}
+      <View style={styles.headerBanner}>
+        <Svg
+          width={SCREEN_WIDTH}
+          height={140}
+          style={StyleSheet.absoluteFill}
+        >
+          <Defs>
+            <LinearGradient id="dashboardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor="#4F46E5" />
+              <Stop offset="50%" stopColor="#6366F1" />
+              <Stop offset="100%" stopColor="#8B5CF6" />
+            </LinearGradient>
+          </Defs>
+          <Path
+            d={`M0 0 L${SCREEN_WIDTH} 0 L${SCREEN_WIDTH} 110 Q${SCREEN_WIDTH * 0.5} 140 0 110 Z`}
+            fill="url(#dashboardGradient)"
+          />
+          {/* Decorative circles */}
+          <Circle cx={SCREEN_WIDTH * 0.9} cy={40} r={50} fill="rgba(255,255,255,0.1)" />
+          <Circle cx={SCREEN_WIDTH * 0.15} cy={80} r={30} fill="rgba(255,255,255,0.08)" />
+          <Circle cx={SCREEN_WIDTH * 0.7} cy={100} r={20} fill="rgba(255,255,255,0.06)" />
+        </Svg>
+        <View style={styles.headerBannerContent}>
+          <Text style={styles.greeting}>Welcome back</Text>
+          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+        </View>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
@@ -136,11 +169,6 @@ export function DashboardScreen() {
           />
         }
       >
-        {/* Welcome Header */}
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Welcome back</Text>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
-        </View>
 
         {/* Quick Stats */}
         <View style={styles.statsGrid}>
@@ -323,7 +351,7 @@ export function DashboardScreen() {
           </View>
         </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -332,21 +360,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  headerBanner: {
+    height: 140,
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.lg,
+  },
+  headerBannerContent: {
+    paddingHorizontal: spacing.lg,
+    zIndex: 1,
+  },
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  header: {
-    marginBottom: spacing.lg,
-  },
   greeting: {
     fontSize: fontSize.md,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.9)',
   },
   userName: {
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   statsGrid: {
     flexDirection: 'row',

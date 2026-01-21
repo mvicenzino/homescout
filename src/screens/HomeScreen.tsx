@@ -10,14 +10,50 @@ import {
   Platform,
   Alert,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Card } from '../components/ui';
 import { usePropertyStore } from '../store/propertyStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { formatCurrency, formatBedsBaths } from '../lib/formatters';
 import { Property, PropertyStatus, HomeStackParamList } from '../types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Header banner with gradient
+function HeaderBanner({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <View style={styles.headerBanner}>
+      <Svg
+        width={SCREEN_WIDTH}
+        height={120}
+        style={StyleSheet.absoluteFill}
+      >
+        <Defs>
+          <LinearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor="#4F46E5" />
+            <Stop offset="50%" stopColor="#6366F1" />
+            <Stop offset="100%" stopColor="#8B5CF6" />
+          </LinearGradient>
+        </Defs>
+        <Path
+          d={`M0 0 L${SCREEN_WIDTH} 0 L${SCREEN_WIDTH} 90 Q${SCREEN_WIDTH * 0.5} 120 0 90 Z`}
+          fill="url(#headerGradient)"
+        />
+        {/* Decorative circles */}
+        <Circle cx={SCREEN_WIDTH * 0.85} cy={30} r={40} fill="rgba(255,255,255,0.1)" />
+        <Circle cx={SCREEN_WIDTH * 0.1} cy={60} r={25} fill="rgba(255,255,255,0.08)" />
+      </Svg>
+      <View style={styles.headerBannerContent}>
+        <Text style={styles.headerBannerTitle}>{title}</Text>
+        {subtitle && <Text style={styles.headerBannerSubtitle}>{subtitle}</Text>}
+      </View>
+    </View>
+  );
+}
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PropertyList'>;
@@ -260,7 +296,15 @@ export function HomeScreen({ navigation }: Props) {
   const totalCount = properties.length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <View style={styles.container}>
+      {/* Header Banner */}
+      <HeaderBanner
+        title="Properties"
+        subtitle={filter === 'all' && selectedTags.length === 0
+          ? `${totalCount} total`
+          : `${propertyCount} of ${totalCount}`}
+      />
+
       {/* Comparison Banner */}
       {selectedPropertyIds.length > 0 && (
         <TouchableOpacity
@@ -275,16 +319,6 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
       )}
-
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Properties</Text>
-        <Text style={styles.headerCount}>
-          {filter === 'all' && selectedTags.length === 0
-            ? `${totalCount} total`
-            : `${propertyCount} of ${totalCount}`}
-        </Text>
-      </View>
 
       {/* Status Filter Bar */}
       <View style={styles.filterBar}>
@@ -393,7 +427,7 @@ export function HomeScreen({ navigation }: Props) {
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -401,6 +435,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  headerBanner: {
+    height: 120,
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.lg,
+  },
+  headerBannerContent: {
+    paddingHorizontal: spacing.lg,
+    zIndex: 1,
+  },
+  headerBannerTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  headerBannerSubtitle: {
+    fontSize: fontSize.sm,
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 2,
   },
   compareBanner: {
     flexDirection: 'row',
@@ -419,25 +475,6 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  headerCount: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
   },
   filterBar: {
     backgroundColor: colors.surface,
