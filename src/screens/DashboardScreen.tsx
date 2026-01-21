@@ -6,20 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../components/ui';
 import { usePropertyStore } from '../store/propertyStore';
 import { useAuthStore } from '../store/authStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { formatCurrency } from '../lib/formatters';
 import { Showing, Client, Activity } from '../types';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function DashboardScreen() {
   const navigation = useNavigation<any>();
@@ -128,34 +125,20 @@ export function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Banner */}
-      <View style={styles.headerBanner}>
-        <Svg
-          width={SCREEN_WIDTH}
-          height={140}
-          style={StyleSheet.absoluteFill}
-        >
-          <Defs>
-            <LinearGradient id="dashboardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor="#4F46E5" />
-              <Stop offset="50%" stopColor="#6366F1" />
-              <Stop offset="100%" stopColor="#8B5CF6" />
-            </LinearGradient>
-          </Defs>
-          <Path
-            d={`M0 0 L${SCREEN_WIDTH} 0 L${SCREEN_WIDTH} 110 Q${SCREEN_WIDTH * 0.5} 140 0 110 Z`}
-            fill="url(#dashboardGradient)"
-          />
-          {/* Decorative circles */}
-          <Circle cx={SCREEN_WIDTH * 0.9} cy={40} r={50} fill="rgba(255,255,255,0.1)" />
-          <Circle cx={SCREEN_WIDTH * 0.15} cy={80} r={30} fill="rgba(255,255,255,0.08)" />
-          <Circle cx={SCREEN_WIDTH * 0.7} cy={100} r={20} fill="rgba(255,255,255,0.06)" />
-        </Svg>
-        <View style={styles.headerBannerContent}>
-          <Text style={styles.greeting}>Welcome back</Text>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
-        </View>
-      </View>
+      {/* Header Banner with Gradient */}
+      <LinearGradient
+        colors={['#4F46E5', '#6366F1', '#8B5CF6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerBanner}
+      >
+        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+          <View style={styles.headerBannerContent}>
+            <Text style={styles.greeting}>Welcome back</Text>
+            <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -361,13 +344,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   headerBanner: {
-    height: 140,
-    justifyContent: 'flex-end',
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  headerSafeArea: {
+    paddingTop: spacing.sm,
   },
   headerBannerContent: {
     paddingHorizontal: spacing.lg,
-    zIndex: 1,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   content: {
     padding: spacing.md,
@@ -375,15 +360,12 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: fontSize.md,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.85)',
   },
   userName: {
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   statsGrid: {
     flexDirection: 'row',
