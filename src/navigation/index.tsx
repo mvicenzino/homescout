@@ -153,7 +153,7 @@ function HomeNavigator() {
       <HomeStack.Screen
         name="PropertyList"
         component={HomeScreen}
-        options={{ title: 'Properties' }}
+        options={{ headerShown: false }}
       />
       <HomeStack.Screen
         name="PropertyDetail"
@@ -186,6 +186,9 @@ function MainNavigator() {
     }
   }, [household?.id]);
 
+  // Screens with custom gradient banners (no navigation header needed)
+  const screensWithBanners = ['Home', 'Dashboard', 'Settings'];
+
   // Different tab layouts based on user type
   if (isBroker) {
     // Broker view: Dashboard, Properties, Showings, Clients, Settings
@@ -197,7 +200,7 @@ function MainNavigator() {
           ),
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
-          headerShown: route.name !== 'Home',
+          headerShown: !screensWithBanners.includes(route.name),
         })}
       >
         <MainTab.Screen name="Dashboard" component={DashboardScreen} />
@@ -222,7 +225,7 @@ function MainNavigator() {
         ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        headerShown: route.name !== 'Home',
+        headerShown: !screensWithBanners.includes(route.name),
       })}
     >
       <MainTab.Screen
