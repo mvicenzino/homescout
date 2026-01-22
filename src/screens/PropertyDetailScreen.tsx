@@ -46,7 +46,7 @@ type Props = {
   route: RouteProp<HomeStackParamList, 'PropertyDetail'>;
 };
 
-type Tab = 'overview' | 'photos' | 'notes' | 'offers' | 'activity' | 'financials';
+type Tab = 'overview' | 'photos' | 'notes' | 'offers' | 'activity' | 'financials' | 'ai';
 
 const statusOptions: { value: PropertyStatus; label: string }[] = [
   { value: 'interested', label: 'Interested' },
@@ -62,7 +62,7 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
   const { properties, isLoading, fetchProperties, updatePropertyStatus, setRating, addNote, deleteNote, addPhoto, addTag, removeTag, deleteProperty } =
     usePropertyStore();
   const { user } = useAuthStore();
-  const { calculatorDefaults, financialProfile } = useSettingsStore();
+  const { calculatorDefaults, financialProfile, hasAnthropicKey } = useSettingsStore();
 
   const property = properties.find((p) => p.id === propertyId);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -551,6 +551,7 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
     { key: 'offers', label: 'Offers' },
     { key: 'activity', label: 'Activity' },
     { key: 'financials', label: 'Costs' },
+    { key: 'ai', label: '✨ AI' },
   ];
 
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -662,17 +663,19 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
         </View>
       )}
 
-      {/* Segmented Control Tabs */}
+      {/* Scrollable Tabs */}
       <View style={styles.tabContainer}>
-        <View style={styles.segmentedControl}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContent}
+        >
           {tabs.map((tab, index) => (
             <TouchableOpacity
               key={tab.key}
               style={[
                 styles.segmentedTab,
                 activeTab === tab.key && styles.segmentedTabActive,
-                index === 0 && styles.segmentedTabFirst,
-                index === tabs.length - 1 && styles.segmentedTabLast,
               ]}
               onPress={() => setActiveTab(tab.key)}
             >
@@ -684,7 +687,7 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       {/* Tab Content */}
@@ -1503,6 +1506,276 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
           </View>
         )}
 
+        {activeTab === 'ai' && (
+          <View>
+            {/* API Key Required Notice */}
+            {!hasAnthropicKey && (
+              <Card style={styles.card}>
+                <View style={styles.aiSetupContainer}>
+                  <Text style={styles.aiSetupIcon}>🔑</Text>
+                  <Text style={styles.aiSetupTitle}>API Key Required</Text>
+                  <Text style={styles.aiSetupText}>
+                    To use AI-powered property analysis, add your Anthropic API key in Settings.
+                  </Text>
+                  <Button
+                    title="Go to Settings"
+                    variant="primary"
+                    onPress={() => navigation.getParent()?.navigate('Settings')}
+                    style={styles.aiSetupButton}
+                  />
+                </View>
+              </Card>
+            )}
+
+            {/* AI Analysis Content */}
+            {hasAnthropicKey && (
+              <>
+                {/* Run Analysis Button */}
+                <Card style={styles.card}>
+                  <View style={styles.aiHeaderRow}>
+                    <View>
+                      <Text style={styles.aiHeaderTitle}>Property Analysis</Text>
+                      {analysisMetadata && (
+                        <Text style={styles.aiHeaderSubtitle}>
+                          Last analyzed {new Date(analysisMetadata.analyzedAt).toLocaleDateString()}
+                          {analysisMetadata.hasFinancialContext ? ' • With financials' : ''}
+                        </Text>
+                      )}
+                    </View>
+                    <Button
+                      title={isAnalyzing ? 'Analyzing...' : (analysis ? 'Re-analyze' : 'Analyze')}
+                      variant={analysis ? 'outline' : 'primary'}
+                      onPress={handleAnalyze}
+                      loading={isAnalyzing}
+                      size="sm"
+                    />
+                  </View>
+                  {hasFinancialData && !analysisMetadata?.hasFinancialContext && analysis && (
+                    <View style={styles.financialPromptInline}>
+                      <Text style={styles.financialPromptInlineText}>
+                        💰 Re-analyze to include your financial profile for personalized recommendations
+                      </Text>
+                    </View>
+                  )}
+                </Card>
+
+                {/* Loading State */}
+                {isAnalyzing && (
+                  <Card style={styles.card}>
+                    <View style={styles.analyzingContainerInline}>
+                      <ActivityIndicator size="large" color={colors.primary} />
+                      <Text style={styles.analyzingText}>Analyzing property with Claude AI...</Text>
+                      <Text style={styles.analyzingSubtext}>
+                        {hasFinancialData ? 'Including personalized financial analysis' : 'This may take a moment'}
+                      </Text>
+                    </View>
+                  </Card>
+                )}
+
+                {/* Error State */}
+                {analysisError && !isAnalyzing && (
+                  <Card style={[styles.card, styles.errorCard]}>
+                    <Text style={styles.errorIcon}>⚠️</Text>
+                    <Text style={styles.errorText}>{analysisError}</Text>
+                  </Card>
+                )}
+
+                {/* Analysis Results */}
+                {analysis && !isAnalyzing && (
+                  <>
+                    {/* Summary */}
+                    <Card style={styles.card}>
+                      <Text style={styles.aiSectionTitle}>Summary</Text>
+                      <Text style={styles.aiSummaryText}>{analysis.summary || 'No summary available'}</Text>
+                    </Card>
+
+                    {/* Pros & Cons */}
+                    <View style={styles.prosConsRow}>
+                      {Array.isArray(analysis.pros) && analysis.pros.length > 0 && (
+                        <Card style={[styles.card, styles.prosCard, styles.halfCard]}>
+                          <Text style={styles.aiSectionTitle}>Pros</Text>
+                          {analysis.pros.map((pro, idx) => (
+                            <View key={idx} style={styles.aiBulletItem}>
+                              <Text style={styles.proIcon}>+</Text>
+                              <Text style={styles.aiBulletText}>{String(pro)}</Text>
+                            </View>
+                          ))}
+                        </Card>
+                      )}
+                      {Array.isArray(analysis.cons) && analysis.cons.length > 0 && (
+                        <Card style={[styles.card, styles.consCard, styles.halfCard]}>
+                          <Text style={styles.aiSectionTitle}>Cons</Text>
+                          {analysis.cons.map((con, idx) => (
+                            <View key={idx} style={styles.aiBulletItem}>
+                              <Text style={styles.conIcon}>-</Text>
+                              <Text style={styles.aiBulletText}>{String(con)}</Text>
+                            </View>
+                          ))}
+                        </Card>
+                      )}
+                    </View>
+
+                    {/* Value Assessment */}
+                    {analysis.valueAssessment && (
+                      <Card style={styles.card}>
+                        <Text style={styles.aiSectionTitle}>Value Assessment</Text>
+                        <Text style={styles.aiBodyText}>{analysis.valueAssessment}</Text>
+                      </Card>
+                    )}
+
+                    {/* Market Comparison */}
+                    {analysis.marketComparison && (
+                      <Card style={styles.card}>
+                        <Text style={styles.aiSectionTitle}>Market Comparison</Text>
+                        <Text style={styles.aiBodyText}>{analysis.marketComparison}</Text>
+                      </Card>
+                    )}
+
+                    {/* Recommendations */}
+                    {Array.isArray(analysis.recommendations) && analysis.recommendations.length > 0 && (
+                      <Card style={styles.card}>
+                        <Text style={styles.aiSectionTitle}>Recommendations</Text>
+                        {analysis.recommendations.map((rec, idx) => (
+                          <View key={idx} style={styles.aiBulletItem}>
+                            <Text style={styles.aiBulletIcon}>•</Text>
+                            <Text style={styles.aiBulletText}>{String(rec)}</Text>
+                          </View>
+                        ))}
+                      </Card>
+                    )}
+
+                    {/* Risk Factors */}
+                    {Array.isArray(analysis.riskFactors) && analysis.riskFactors.length > 0 && (
+                      <Card style={[styles.card, styles.riskCard]}>
+                        <Text style={styles.aiSectionTitle}>⚠️ Risk Factors</Text>
+                        {analysis.riskFactors.map((risk, idx) => (
+                          <View key={idx} style={styles.aiBulletItem}>
+                            <Text style={styles.aiBulletText}>{String(risk)}</Text>
+                          </View>
+                        ))}
+                      </Card>
+                    )}
+
+                    {/* Investment Potential */}
+                    {analysis.investmentPotential && (
+                      <Card style={styles.card}>
+                        <Text style={styles.aiSectionTitle}>Investment Potential</Text>
+                        <Text style={styles.aiBodyText}>{analysis.investmentPotential}</Text>
+                      </Card>
+                    )}
+
+                    {/* Financial Analysis (if available) */}
+                    {analysis.affordabilityAnalysis && (
+                      <Card style={[styles.card, styles.financialCard]}>
+                        <Text style={styles.aiSectionTitle}>💰 Affordability Analysis</Text>
+                        <View style={styles.financialRow}>
+                          <Text style={styles.financialLabel}>Monthly Payment</Text>
+                          <Text style={styles.financialValue}>
+                            {formatCurrency(analysis.affordabilityAnalysis.monthlyPaymentEstimate)}
+                          </Text>
+                        </View>
+                        <View style={styles.financialRow}>
+                          <Text style={styles.financialLabel}>Debt-to-Income</Text>
+                          <Text style={styles.financialValue}>
+                            {(analysis.affordabilityAnalysis.dtiRatio * 100).toFixed(0)}%
+                          </Text>
+                        </View>
+                        <View style={[styles.verdictBadge, { backgroundColor:
+                          analysis.affordabilityAnalysis.affordabilityVerdict === 'comfortable' ? colors.success + '20' :
+                          analysis.affordabilityAnalysis.affordabilityVerdict === 'stretched' ? colors.warning + '20' :
+                          colors.error + '20'
+                        }]}>
+                          <Text style={[styles.verdictText, { color:
+                            analysis.affordabilityAnalysis.affordabilityVerdict === 'comfortable' ? colors.success :
+                            analysis.affordabilityAnalysis.affordabilityVerdict === 'stretched' ? colors.warning :
+                            colors.error
+                          }]}>
+                            {analysis.affordabilityAnalysis.affordabilityVerdict.toUpperCase()}
+                          </Text>
+                        </View>
+                      </Card>
+                    )}
+
+                    {analysis.investmentAnalysis && (
+                      <Card style={[styles.card, styles.financialCard]}>
+                        <Text style={styles.aiSectionTitle}>📈 Investment Analysis</Text>
+                        <View style={styles.financialRow}>
+                          <Text style={styles.financialLabel}>Expected Appreciation</Text>
+                          <Text style={styles.financialValue}>
+                            {analysis.investmentAnalysis.expectedAppreciation}
+                          </Text>
+                        </View>
+                        <View style={styles.financialRow}>
+                          <Text style={styles.financialLabel}>Rental Potential</Text>
+                          <Text style={styles.financialValue}>
+                            {analysis.investmentAnalysis.rentalPotential}
+                          </Text>
+                        </View>
+                        <View style={styles.financialRow}>
+                          <Text style={styles.financialLabel}>Break-even</Text>
+                          <Text style={styles.financialValue}>
+                            {analysis.investmentAnalysis.breakEvenYears} years
+                          </Text>
+                        </View>
+                        <View style={[styles.recommendationBadge, { backgroundColor:
+                          (analysis.investmentAnalysis.recommendation === 'buy' || analysis.investmentAnalysis.recommendation === 'strong_buy') ? colors.success + '20' :
+                          analysis.investmentAnalysis.recommendation === 'hold' ? colors.warning + '20' :
+                          colors.error + '20'
+                        }]}>
+                          <Text style={[styles.recommendationText, { color:
+                            (analysis.investmentAnalysis.recommendation === 'buy' || analysis.investmentAnalysis.recommendation === 'strong_buy') ? colors.success :
+                            analysis.investmentAnalysis.recommendation === 'hold' ? colors.warning :
+                            colors.error
+                          }]}>
+                            {analysis.investmentAnalysis.recommendation.toUpperCase().replace('_', ' ')}
+                          </Text>
+                        </View>
+                      </Card>
+                    )}
+
+                    {analysis.transactionAdvice && (
+                      <Card style={[styles.card, styles.financialCard]}>
+                        <Text style={styles.aiSectionTitle}>🤝 Transaction Advice</Text>
+                        <Text style={styles.aiBodyText}>
+                          <Text style={styles.financialLabel}>Offer Strategy: </Text>
+                          {analysis.transactionAdvice.offerStrategy}
+                        </Text>
+                        {Array.isArray(analysis.transactionAdvice.negotiationPoints) && (
+                          <View style={styles.negotiationPoints}>
+                            <Text style={styles.financialLabel}>Negotiation Points:</Text>
+                            {analysis.transactionAdvice.negotiationPoints.map((point, idx) => (
+                              <Text key={idx} style={styles.negotiationPoint}>• {point}</Text>
+                            ))}
+                          </View>
+                        )}
+                        <View style={styles.financialRow}>
+                          <Text style={styles.financialLabel}>Est. Closing Costs</Text>
+                          <Text style={styles.financialValue}>
+                            {formatCurrency(analysis.transactionAdvice.closingCostEstimate)}
+                          </Text>
+                        </View>
+                      </Card>
+                    )}
+                  </>
+                )}
+
+                {/* Empty State */}
+                {!analysis && !isAnalyzing && !analysisError && (
+                  <Card style={styles.card}>
+                    <View style={styles.aiEmptyState}>
+                      <Text style={styles.aiEmptyIcon}>✨</Text>
+                      <Text style={styles.aiEmptyTitle}>No Analysis Yet</Text>
+                      <Text style={styles.aiEmptyText}>
+                        Tap "Analyze" to get AI-powered insights about this property including value assessment, pros/cons, and recommendations.
+                      </Text>
+                    </View>
+                  </Card>
+                )}
+              </>
+            )}
+          </View>
+        )}
+
       </ScrollView>
 
       {/* Floating AI Analysis Button */}
@@ -2067,38 +2340,23 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  segmentedControl: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: borderRadius.md,
-    padding: 2,
+  tabScrollContent: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
   },
   segmentedTab: {
-    flex: 1,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
-    borderRadius: borderRadius.md - 2,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceSecondary,
   },
   segmentedTabActive: {
-    backgroundColor: colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  segmentedTabFirst: {
-    borderTopLeftRadius: borderRadius.md - 2,
-    borderBottomLeftRadius: borderRadius.md - 2,
-  },
-  segmentedTabLast: {
-    borderTopRightRadius: borderRadius.md - 2,
-    borderBottomRightRadius: borderRadius.md - 2,
+    backgroundColor: colors.primary,
   },
   segmentedTabText: {
     fontSize: fontSize.sm,
@@ -2106,7 +2364,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
   },
   segmentedTabTextActive: {
-    color: colors.textPrimary,
+    color: colors.textInverse,
     fontWeight: fontWeight.semibold,
   },
   content: {
@@ -2990,5 +3248,189 @@ const styles = StyleSheet.create({
   activityTimelineTime: {
     fontSize: fontSize.xs,
     color: colors.textMuted,
+  },
+  // AI Tab styles
+  aiSetupContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  aiSetupIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  aiSetupTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  aiSetupText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    lineHeight: 22,
+  },
+  aiSetupButton: {
+    minWidth: 150,
+  },
+  aiHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  aiHeaderTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  aiHeaderSubtitle: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  financialPromptInline: {
+    marginTop: spacing.md,
+    padding: spacing.sm,
+    backgroundColor: colors.primary + '10',
+    borderRadius: borderRadius.md,
+  },
+  financialPromptInlineText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+  },
+  analyzingContainerInline: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  errorCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+  },
+  aiSectionTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  aiSummaryText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    lineHeight: 24,
+  },
+  aiBodyText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    lineHeight: 22,
+  },
+  prosConsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  halfCard: {
+    flex: 1,
+  },
+  prosCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+  },
+  consCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+  },
+  riskCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.warning,
+    backgroundColor: colors.warning + '08',
+  },
+  financialCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    backgroundColor: colors.primary + '08',
+  },
+  aiBulletItem: {
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
+  },
+  aiBulletIcon: {
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+    marginRight: spacing.sm,
+    width: 16,
+  },
+  aiBulletText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  financialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  financialLabel: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  financialValue: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  verdictBadge: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  verdictText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+  recommendationBadge: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  recommendationText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+  negotiationPoints: {
+    marginTop: spacing.sm,
+  },
+  negotiationPoint: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  aiEmptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  aiEmptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  aiEmptyTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  aiEmptyText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: spacing.lg,
   },
 });
