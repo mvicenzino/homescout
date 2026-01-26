@@ -30,8 +30,8 @@
 
 | Feature | Free | Premium |
 |---------|------|---------|
-| **Price** | $0 | $9.99/mo or $99/yr |
-| Save properties | Up to 25 | Unlimited |
+| **Price** | $0 | $9.99/month |
+| Save properties | Up to 10 | Unlimited |
 | Browser extension | ✅ | ✅ |
 | Paste URL to import | ✅ | ✅ |
 | Ratings & notes | ✅ | ✅ |
@@ -39,8 +39,8 @@
 | Mortgage calculator | ✅ | ✅ |
 | Affordability calculator | ✅ | ✅ |
 | Closing cost estimator | ✅ | ✅ |
-| Household collaboration | 1 partner | Unlimited members |
-| **AI Property Analysis** | 3/month | Unlimited |
+| Household collaboration | ❌ | Unlimited members |
+| **AI Property Analysis** | 1/month | Unlimited |
 | **AI Affordability Report** | ❌ | ✅ |
 | **AI Investment Scoring** | ❌ | ✅ |
 | **AI Negotiation Tips** | ❌ | ✅ |
@@ -49,7 +49,11 @@
 | Search history | 30 days | Unlimited |
 | Priority support | ❌ | ✅ |
 
-### Pricing Details
+### Pricing Philosophy: Monthly Only
+
+**Why no annual plans?**
+
+Home buying takes 3-6 months, not 12. We don't believe in locking you into a plan you won't need. Pay while you search, stop when you find your home. We'll be here if you ever search again.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -58,24 +62,24 @@
 │                                                                  │
 │   FREE TIER                                                     │
 │   └── $0 forever                                                │
-│   └── Great for casual browsing                                 │
+│   └── Great for getting started                                 │
 │   └── Enough to experience core value                           │
 │                                                                  │
-│   PREMIUM                                                       │
-│   └── $9.99/month (monthly billing)                             │
-│   └── $99/year (save $20 - 17% discount)                        │
+│   PREMIUM: $9.99/month                                          │
+│   └── No annual contracts — ever                                │
 │   └── 7-day free trial                                          │
-│   └── Cancel anytime                                            │
+│   └── Cancel anytime with one tap                               │
+│   └── No cancellation fees or tricks                            │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Conversion Triggers (When Free Users Upgrade)
 
-1. **Hit 25 property limit** - "Upgrade to save unlimited properties"
-2. **Want 4th AI analysis** - "You've used 3 of 3 AI analyses this month"
+1. **Hit 10 property limit** - "Upgrade to save unlimited properties"
+2. **Want 2nd AI analysis** - "You've used your free AI analysis this month"
 3. **Compare 3+ properties** - "Upgrade to compare up to 6 side-by-side"
-4. **Add more family** - "Invite unlimited household members with Premium"
+4. **Want to collaborate** - "Invite your partner to rate and decide together"
 5. **Ready to make offers** - "Get AI negotiation tips and investment scoring"
 
 ---
@@ -86,8 +90,7 @@
 
 | Feature | Starter | Pro | Team |
 |---------|---------|-----|------|
-| **Price** | $0 | $29/mo | $79/mo |
-| **Annual Price** | $0 | $290/yr | $790/yr |
+| **Price** | $0 | $39/month | $99/month |
 | Client management | Up to 10 | Up to 50 | Unlimited |
 | Property sharing with clients | ✅ | ✅ | ✅ |
 | Basic lead scoring | ✅ | ✅ | ✅ |
@@ -104,7 +107,9 @@
 | **API access** | ❌ | ❌ | ✅ |
 | **Dedicated support** | ❌ | ❌ | ✅ |
 
-### Pricing Details
+### Pricing Philosophy: Monthly Only
+
+Same as buyers — no annual contracts. Agents can try HomeScout with minimal commitment. If it's not working, cancel anytime. We earn your business every month.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -116,14 +121,14 @@
 │   └── Manage up to 10 active clients                            │
 │   └── Core features to get started                              │
 │                                                                  │
-│   PRO ($29/month)                                               │
-│   └── $29/month or $290/year (save $58)                         │
+│   PRO: $39/month                                                │
+│   └── No annual contracts                                       │
 │   └── For active agents with steady pipeline                    │
 │   └── Advanced insights and automation                          │
 │   └── 14-day free trial                                         │
 │                                                                  │
-│   TEAM ($79/month)                                              │
-│   └── $79/month or $790/year (save $158)                        │
+│   TEAM: $99/month                                               │
+│   └── No annual contracts                                       │
 │   └── For teams and top producers                               │
 │   └── Up to 5 team members                                      │
 │   └── Custom branding and full analytics                        │
@@ -170,7 +175,7 @@
 | LionDesk | $25-99/mo | Simpler, buyer-connected |
 | kvCORE | $300+/mo | 90% cheaper, easier to use |
 
-**Positioning:** HomeScout Pro at $29/mo undercuts most CRMs while offering unique buyer-agent connection.
+**Positioning:** HomeScout Pro at $39/mo undercuts most CRMs while offering unique buyer-agent connection.
 
 ---
 
@@ -184,21 +189,24 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │   Monthly revenue per user:         $9.99                       │
-│   Annual revenue per user:          $99 - $120                  │
 │                                                                  │
 │   Customer acquisition cost (CAC):  $15 - $30                   │
 │   └── Organic/referral:             $5 - $10                    │
 │   └── Paid (social/search):         $30 - $50                   │
 │   └── Blended target:               $20                         │
 │                                                                  │
-│   Average lifetime (months):        8 - 12                      │
-│   Lifetime value (LTV):             $80 - $120                  │
+│   Average lifetime (months):        4 - 6 (realistic)           │
+│   Lifetime value (LTV):             $40 - $60                   │
 │                                                                  │
-│   LTV:CAC ratio:                    4:1 to 6:1 ✅               │
-│   (Healthy SaaS = 3:1+)                                         │
+│   LTV:CAC ratio:                    2:1 to 3:1                  │
+│   (Acceptable for transactional product)                        │
 │                                                                  │
 │   Gross margin:                     85%+                        │
 │   (Primary cost = AI API calls)                                 │
+│                                                                  │
+│   Note: Buyer LTV is modest because home buying is              │
+│   short-term. Revenue scales through volume + partner           │
+│   referrals, not individual LTV.                                │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -210,8 +218,7 @@
 │                    AGENT UNIT ECONOMICS                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│   Monthly revenue per user:         $29                         │
-│   Annual revenue per user:          $290 - $350                 │
+│   Monthly revenue per user:         $39                         │
 │                                                                  │
 │   Customer acquisition cost (CAC):  $50 - $100                  │
 │   └── Referral from buyers:         $10 - $20                   │
@@ -219,12 +226,16 @@
 │   └── Paid ads:                     $100 - $150                 │
 │   └── Blended target:               $60                         │
 │                                                                  │
-│   Average lifetime (months):        14 - 18                     │
-│   Lifetime value (LTV):             $400 - $600                 │
+│   Average lifetime (months):        12 - 18                     │
+│   Lifetime value (LTV):             $470 - $700                 │
 │                                                                  │
 │   LTV:CAC ratio:                    5:1 to 8:1 ✅               │
+│   (Excellent unit economics)                                    │
 │                                                                  │
 │   Gross margin:                     90%+                        │
+│                                                                  │
+│   Note: Agents are the higher-LTV segment. Focus agent          │
+│   acquisition to drive sustainable revenue.                     │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -306,12 +317,12 @@ Metrics to hit:
 GOAL: Prove willingness to pay, reach $50K MRR
 
 BUYERS:     Free + Premium ($9.99/mo) launched
-AGENTS:     Free + Pro ($29/mo) launched
+AGENTS:     Free + Pro ($39/mo) launched
 
 Metrics to hit:
 ├── 5% free-to-paid conversion
 ├── $50,000 MRR
-├── <5% monthly churn
+├── <8% monthly churn
 └── 500 paying customers
 ```
 
@@ -320,7 +331,7 @@ Metrics to hit:
 GOAL: Expand revenue streams, reach $150K MRR
 
 BUYERS:     Free + Premium + Add-ons
-AGENTS:     Free + Pro + Team ($79/mo)
+AGENTS:     Free + Pro + Team ($99/mo)
 PARTNERS:   Lender partnerships launched
 
 Metrics to hit:
@@ -384,7 +395,7 @@ Metrics to hit:
 | Monthly churn (buyers) | <8% | Retention |
 | Monthly churn (agents) | <5% | Retention |
 | ARPU (buyers) | $10+ | Revenue optimization |
-| ARPU (agents) | $35+ | Revenue optimization |
+| ARPU (agents) | $40+ | Revenue optimization |
 | CAC payback period | <6 months | Capital efficiency |
 | Net revenue retention | >100% | Expansion revenue |
 
@@ -398,14 +409,14 @@ A: Home buying is stressful enough. We want pricing to be a no-brainer decision.
 **Q: Why not charge per AI analysis?**
 A: We tested this. Users hesitate to use features they're paying per-use for. Unlimited usage drives engagement and word-of-mouth.
 
-**Q: Why is the free tier so generous?**
-A: Free users become paying users. Free users invite partners. Free users refer agents. The free tier is our growth engine.
+**Q: Why is the free tier limited?**
+A: The free tier lets you experience core value (10 properties, 1 AI analysis). Once you're serious about your search, Premium unlocks unlimited everything. We want committed searchers, not casual browsers.
 
 **Q: Will you ever have ads?**
 A: No. Ads create misaligned incentives in high-stakes purchases. We want to be the buyer's trusted tool, not another lead-gen platform.
 
-**Q: Why annual discounts?**
-A: Annual plans improve cash flow, reduce churn, and indicate committed users. 17-20% discount is standard SaaS practice.
+**Q: Why no annual plans?**
+A: Home buying takes 3-6 months, not 12. We don't believe in locking you into subscriptions you won't need. Pay while you search, cancel when you're done. No tricks, no dark patterns.
 
 **Q: Will prices increase?**
 A: Early adopters will be grandfathered at launch pricing. We may adjust pricing for new users as we add features and prove value.

@@ -82,8 +82,8 @@
 │                                                                                                        │
 │  Subscriptions                              Partner Referrals             Data & Insights              │
 │  ├── Buyer Premium: $9.99/mo               ├── Mortgage lenders          ├── Market trends            │
-│  ├── Agent Pro: $29/mo                     ├── Home inspectors           ├── Buyer preferences        │
-│  └── Agent Team: $79/mo                    ├── Title companies           └── Brokerage analytics      │
+│  ├── Agent Pro: $39/mo                     ├── Home inspectors           ├── Buyer preferences        │
+│  └── Agent Team: $99/mo                    ├── Title companies           └── Brokerage analytics      │
 │                                             └── Insurance                                              │
 │                                                                                                        │
 │  YEAR 1 TARGET: $50K - $200K ARR                                                                      │
@@ -289,8 +289,8 @@ Breakeven: ~170 paying users
 | Buyer Free | $0 | 90% of buyers | $0 |
 | Buyer Premium | $9.99/mo | 10% of buyers | $9.99 × users |
 | Agent Starter | $0 | 70% of agents | $0 |
-| Agent Pro | $29/mo | 25% of agents | $29 × users |
-| Agent Team | $79/mo | 5% of agents | $79 × users |
+| Agent Pro | $39/mo | 25% of agents | $39 × users |
+| Agent Team | $99/mo | 5% of agents | $99 × users |
 
 **Revenue Model Example (Year 2):**
 ```
@@ -300,13 +300,13 @@ Breakeven: ~170 paying users
 
 2,000 registered agents
 ├── 1,400 free users ($0)
-├── 500 Pro users × $29 = $14,500/month
-└── 100 Team users × $79 = $7,900/month
+├── 500 Pro users × $39 = $19,500/month
+└── 100 Team users × $99 = $9,900/month
 
-Subscription MRR: $122,300
+Subscription MRR: $129,300
 Partner referrals: $15,000/month
-Total MRR: ~$137,000
-Annual Revenue: ~$1.6M
+Total MRR: ~$144,000
+Annual Revenue: ~$1.7M
 ```
 
 ---

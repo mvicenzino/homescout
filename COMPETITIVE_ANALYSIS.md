@@ -352,34 +352,34 @@ HomeScout doesn't need to beat Zillow. The residential real estate market is $1.
 
 ### Pricing Tiers - Home Buyers
 
-| Feature | Free | Premium ($9.99/mo) |
+| Feature | Free | Premium ($9.99/month) |
 |---------|------|-------------------|
-| Save properties | Up to 25 | Unlimited |
+| Save properties | Up to 10 | Unlimited |
 | Browser extension | ✅ | ✅ |
 | Basic ratings & notes | ✅ | ✅ |
 | Side-by-side compare | Up to 2 | Up to 6 |
 | Mortgage calculator | ✅ | ✅ |
-| Household collaboration | 1 partner | Unlimited members |
-| **AI Property Analysis** | 3/month | Unlimited |
+| Household collaboration | ❌ | Unlimited members |
+| **AI Property Analysis** | 1/month | Unlimited |
 | **AI Affordability Report** | ❌ | ✅ |
 | **Investment Scoring** | ❌ | ✅ |
 | **Personalized Insights** | ❌ | ✅ |
 | Export to PDF | ❌ | ✅ |
 | Priority support | ❌ | ✅ |
 
-**Annual option:** $99/year (save $20)
+**Monthly only. No annual contracts.** Home buying takes 3-6 months—we don't lock you in.
 
 **Conversion triggers:**
-- Hit 25 property limit
-- Want AI analysis on 4th property
-- Need to share with more family members
+- Hit 10 property limit
+- Want 2nd AI analysis
+- Want to invite partner to collaborate
 - Ready to make offers (want full analysis)
 
 ---
 
 ### Pricing Tiers - Real Estate Professionals
 
-| Feature | Starter (Free) | Pro ($29/mo) | Team ($79/mo) |
+| Feature | Starter (Free) | Pro ($39/month) | Team ($99/month) |
 |---------|----------------|--------------|---------------|
 | Client management | Up to 10 | Up to 50 | Unlimited |
 | Property sharing | ✅ | ✅ | ✅ |
@@ -394,9 +394,7 @@ HomeScout doesn't need to beat Zillow. The residential real estate market is $1.
 | **Analytics & reports** | ❌ | ❌ | ✅ |
 | **API access** | ❌ | ❌ | ✅ |
 
-**Annual pricing:**
-- Pro: $290/year (save $58)
-- Team: $790/year (save $158)
+**Monthly only. No annual contracts.** We earn your business every month.
 
 ---
 
@@ -417,7 +415,7 @@ HomeScout doesn't need to beat Zillow. The residential real estate market is $1.
 │   AGENTS:                                                       │
 │   ┌────────────────┬────────────────┬────────────────┐         │
 │   │   Homesnap     │   HomeScout    │  Follow Up     │         │
-│   │   $25-50/mo    │   $29/mo       │     Boss       │         │
+│   │   $25-50/mo    │   $39/mo       │     Boss       │         │
 │   │                │                │   $69-500/mo   │         │
 │   └────────────────┴────────────────┴────────────────┘         │
 │                                                                  │
@@ -434,19 +432,21 @@ HomeScout doesn't need to beat Zillow. The residential real estate market is $1.
 **Buyer Premium Subscription:**
 ```
 Monthly revenue per user:        $9.99
-Annual revenue per user:         $99-120
 Customer acquisition cost:       $15-30 (target)
-Lifetime value (12mo avg):       $80-100
-LTV:CAC ratio:                   3-4x (healthy)
+Average lifetime:                4-6 months (home buying cycle)
+Lifetime value:                  $40-60
+LTV:CAC ratio:                   2-3x (acceptable for transactional)
+
+Note: Buyer LTV is modest. Revenue scales via volume + partner referrals.
 ```
 
 **Agent Pro Subscription:**
 ```
-Monthly revenue per user:        $29
-Annual revenue per user:         $290-350
+Monthly revenue per user:        $39
 Customer acquisition cost:       $50-100 (target)
-Lifetime value (18mo avg):       $400-500
-LTV:CAC ratio:                   4-5x (healthy)
+Average lifetime:                12-18 months
+Lifetime value:                  $470-700
+LTV:CAC ratio:                   5-8x (excellent)
 ```
 
 ---
@@ -495,7 +495,7 @@ Goal: 10,000 users, validate product-market fit
 #### Phase 2: Monetization (Months 6-12)
 ```
 BUYERS:     Free + Premium ($9.99/mo)
-AGENTS:     Free + Pro ($29/mo)
+AGENTS:     Free + Pro ($39/mo)
 
 Goal: 5% conversion to paid, $50K MRR
 ```
@@ -503,7 +503,7 @@ Goal: 5% conversion to paid, $50K MRR
 #### Phase 3: Expansion (Months 12-24)
 ```
 BUYERS:     Free + Premium + Add-ons
-AGENTS:     Free + Pro + Team ($79/mo)
+AGENTS:     Free + Pro + Team ($99/mo)
 PARTNERS:   Lender/inspector referrals
 
 Goal: 10% conversion, $200K MRR
@@ -535,11 +535,11 @@ Goal: $1M+ MRR, multiple revenue streams
 
 ### Pricing FAQs
 
-**Q: Why not charge agents more?**
-A: Agents are the distribution channel. Low pricing = faster adoption = more buyer referrals. We make money when their clients convert.
+**Q: Why no annual plans?**
+A: Home buying takes 3-6 months, not 12. We don't believe in locking customers into plans they won't need. Monthly subscriptions keep us honest—we earn your business every month.
 
 **Q: Why limit free tier AI?**
-A: AI costs money (API calls). 3 free analyses lets users experience value; unlimited requires commitment.
+A: AI costs money (API calls). 1 free analysis/month lets users experience value; unlimited requires commitment.
 
 **Q: Why no ads?**
 A: Ads destroy trust in a high-stakes purchase. We want to be the buyer's advocate, not another lead-gen tool.

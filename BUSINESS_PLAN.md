@@ -21,9 +21,10 @@ HomeScout provides:
 - **Agent integration** connecting buyers with their real estate professionals
 
 ### Business Model
-Freemium SaaS with multiple revenue streams:
+Freemium SaaS with monthly subscriptions (no annual contracts):
 - **Buyer Premium:** $9.99/month for unlimited AI analysis and features
-- **Agent Pro:** $29/month for client management and insights
+- **Agent Pro:** $39/month for client management and insights
+- **Agent Team:** $99/month for teams and top producers
 - **Partner Referrals:** Revenue share from lenders, inspectors, title companies
 
 ### Traction Goals
@@ -285,7 +286,7 @@ HomeScout doesn't compete directly with Zillow on discovery. We own the decision
 │                                                                  │
 │   1. FREEMIUM SUBSCRIPTIONS (Primary - 70% of revenue)          │
 │      └── Buyers: Free → Premium ($9.99/mo)                      │
-│      └── Agents: Free → Pro ($29/mo) → Team ($79/mo)            │
+│      └── Agents: Free → Pro ($39/mo) → Team ($99/mo)            │
 │                                                                  │
 │   2. TRANSACTION FEES (Secondary - 20% of revenue)              │
 │      └── Mortgage lender referrals: $500-2,000/close            │
@@ -303,24 +304,24 @@ HomeScout doesn't compete directly with Zillow on discovery. We own the decision
 
 #### Home Buyers
 
-| Feature | Free | Premium ($9.99/mo) |
+| Feature | Free | Premium ($9.99/month) |
 |---------|------|-------------------|
-| Save properties | Up to 25 | Unlimited |
+| Save properties | Up to 10 | Unlimited |
 | Browser extension | ✅ | ✅ |
 | Basic ratings & notes | ✅ | ✅ |
 | Side-by-side compare | Up to 2 | Up to 6 |
 | Mortgage calculator | ✅ | ✅ |
-| Household collaboration | 1 partner | Unlimited |
-| **AI Property Analysis** | 3/month | Unlimited |
+| Household collaboration | ❌ | Unlimited |
+| **AI Property Analysis** | 1/month | Unlimited |
 | **AI Affordability Report** | ❌ | ✅ |
 | **Investment Scoring** | ❌ | ✅ |
 | **Export to PDF** | ❌ | ✅ |
 
-**Annual option:** $99/year (save 17%)
+**Monthly only. No annual contracts.** Home buying takes 3-6 months—we don't lock you into plans you won't need.
 
 #### Real Estate Professionals
 
-| Feature | Starter (Free) | Pro ($29/mo) | Team ($79/mo) |
+| Feature | Starter (Free) | Pro ($39/month) | Team ($99/month) |
 |---------|----------------|--------------|---------------|
 | Client management | Up to 10 | Up to 50 | Unlimited |
 | Property sharing | ✅ | ✅ | ✅ |
@@ -332,28 +333,32 @@ HomeScout doesn't compete directly with Zillow on discovery. We own the decision
 | **Team members** | 1 | 1 | Up to 5 |
 | **API access** | ❌ | ❌ | ✅ |
 
+**Monthly only. No annual contracts.** We earn your business every month.
+
 ### Unit Economics
 
 **Buyer Premium:**
 ```
 Monthly revenue per user:        $9.99
-Annual revenue per user:         $99-120
 Customer acquisition cost:       $15-30
-Average lifetime (months):       8-12
-Lifetime value (LTV):            $80-120
-LTV:CAC ratio:                   4:1 to 6:1 ✅
+Average lifetime (months):       4-6 (realistic for home buying cycle)
+Lifetime value (LTV):            $40-60
+LTV:CAC ratio:                   2:1 to 3:1 (acceptable for transactional)
 Gross margin:                    85%+
+
+Note: Buyer LTV is modest. Revenue scales through volume + partner referrals.
 ```
 
 **Agent Pro:**
 ```
-Monthly revenue per user:        $29
-Annual revenue per user:         $290-350
+Monthly revenue per user:        $39
 Customer acquisition cost:       $50-100
-Average lifetime (months):       14-18
-Lifetime value (LTV):            $400-600
-LTV:CAC ratio:                   5:1 to 8:1 ✅
+Average lifetime (months):       12-18
+Lifetime value (LTV):            $470-700
+LTV:CAC ratio:                   5:1 to 8:1 ✅ (excellent)
 Gross margin:                    90%+
+
+Note: Agents are the high-LTV segment. Focus here for sustainable revenue.
 ```
 
 ### Partner Revenue Potential
@@ -389,9 +394,9 @@ METRICS:    10,000 users, 2,500 MAU, NPS > 40
 **Goal:** Prove willingness to pay, reach $50K MRR
 
 ```
-PRICING:    Free + Premium ($9.99) + Agent Pro ($29)
+PRICING:    Free + Premium ($9.99/mo) + Agent Pro ($39/mo)
 CHANNELS:   SEO, content marketing, agent referral program
-METRICS:    5% conversion, $50K MRR, <5% churn
+METRICS:    5% conversion, $50K MRR, <8% churn
 ```
 
 **Growth Tactics:**
@@ -405,7 +410,7 @@ METRICS:    5% conversion, $50K MRR, <5% churn
 **Goal:** Multiple revenue streams, reach $150K MRR
 
 ```
-PRICING:    Free + Premium + Add-ons + Agent Team ($79)
+PRICING:    Free + Premium + Add-ons + Agent Team ($99/mo)
 PARTNERS:   Lender partnerships launched
 METRICS:    8% conversion, $150K MRR, 2,000 paying customers
 ```
