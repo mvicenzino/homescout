@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.vicenzino.homescout",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow HomeScout to access your photos to add property images.",
-        "NSCameraUsageDescription": "Allow HomeScout to take photos of properties."
+        "NSCameraUsageDescription": "Allow HomeScout to take photos of properties.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
