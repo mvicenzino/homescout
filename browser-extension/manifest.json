@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "HomeScout - Save Listings",
+  "version": "1.0.0",
+  "description": "Save property listings from Redfin, Zillow, and Realtor.com to HomeScout",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://www.redfin.com/*",
+    "https://www.zillow.com/*",
+    "https://www.realtor.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.redfin.com/*/home/*",
+        "https://www.redfin.com/*/*/*/*/home/*"
+      ],
+      "js": ["content-redfin.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

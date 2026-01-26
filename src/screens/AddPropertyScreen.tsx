@@ -31,6 +31,7 @@ type Props = {
 
 export function AddPropertyScreen({ navigation, route }: Props) {
   const propertyId = route.params?.propertyId;
+  const initialData = route.params?.initialData;
   const isEditing = !!propertyId;
 
   const { properties, addProperty, updateProperty } = usePropertyStore();
@@ -90,23 +91,78 @@ export function AddPropertyScreen({ navigation, route }: Props) {
     checkAnthropicKey();
   }, []);
 
+  // Handle deep link data from browser extension
+  useEffect(() => {
+    if (initialData && !isEditing) {
+      // Update basic form data
+      setFormData((prev) => ({
+        ...prev,
+        address: initialData.address || prev.address,
+        city: initialData.city || prev.city,
+        state: initialData.state || prev.state,
+        zip: initialData.zip || prev.zip,
+        price: initialData.price || prev.price,
+        beds: initialData.beds || prev.beds,
+        baths: initialData.baths || prev.baths,
+        sqft: initialData.sqft || prev.sqft,
+        lot_size: initialData.lot_size || prev.lot_size,
+        year_built: initialData.year_built || prev.year_built,
+        garage: initialData.garage_spaces || prev.garage,
+        hoa_monthly: initialData.hoa_fee || prev.hoa_monthly,
+        source_url: initialData.source_url || prev.source_url,
+        mls_number: initialData.mls_number || prev.mls_number,
+      }));
+
+      // Capture extended data from browser extension
+      const extended: Record<string, any> = {};
+      if (initialData.property_type) extended.property_type = initialData.property_type;
+      if (initialData.status) extended.status = initialData.status;
+      if (initialData.description) extended.remarks = initialData.description;
+      if (initialData.days_on_market) extended.days_on_market = parseInt(initialData.days_on_market);
+      if (initialData.listing_agent) extended.listing_agent = initialData.listing_agent;
+      if (initialData.price_per_sqft) extended.price_per_sqft = parseInt(initialData.price_per_sqft);
+      if (initialData.nearby_schools) extended.nearby_schools = initialData.nearby_schools;
+      if (initialData.photo_urls) extended.photo_urls = initialData.photo_urls.split('|');
+
+      if (Object.keys(extended).length > 0) {
+        setExtendedData(extended);
+      }
+
+      // Show notification that data was imported
+      const fieldsImported = [
+        initialData.address && 'address',
+        initialData.price && 'price',
+        initialData.beds && 'beds/baths',
+        initialData.sqft && 'sqft',
+      ].filter(Boolean).length;
+
+      Alert.alert(
+        'Property Imported',
+        `Property data from ${initialData.source || 'Redfin'} has been imported (${fieldsImported} fields). Review and save when ready.`,
+        [{ text: 'OK' }]
+      );
+    }
+  }, [initialData, isEditing]);
+
   const handleImportSpecSheet = () => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Paste Image', 'Paste JSON', 'Take Photo', 'Choose from Library', 'Select PDF'],
+          options: ['Cancel', 'Paste URL', 'Paste Image', 'Paste JSON', 'Take Photo', 'Choose from Library', 'Select PDF'],
           cancelButtonIndex: 0,
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            handlePasteImage();
+            handlePasteURL();
           } else if (buttonIndex === 2) {
-            handlePasteText();
+            handlePasteImage();
           } else if (buttonIndex === 3) {
-            handleImageImport('camera');
+            handlePasteText();
           } else if (buttonIndex === 4) {
-            handleImageImport('library');
+            handleImageImport('camera');
           } else if (buttonIndex === 5) {
+            handleImageImport('library');
+          } else if (buttonIndex === 6) {
             handleImageImport('pdf');
           }
         }
@@ -117,6 +173,7 @@ export function AddPropertyScreen({ navigation, route }: Props) {
         'Choose how to import your spec sheet',
         [
           { text: 'Cancel', style: 'cancel' },
+          { text: 'Paste URL', onPress: handlePasteURL },
           { text: 'Paste Image', onPress: handlePasteImage },
           { text: 'Paste JSON', onPress: handlePasteText },
           { text: 'Take Photo', onPress: () => handleImageImport('camera') },
@@ -124,6 +181,117 @@ export function AddPropertyScreen({ navigation, route }: Props) {
           { text: 'Select PDF', onPress: () => handleImageImport('pdf') },
         ]
       );
+    }
+  };
+
+  const handlePasteURL = async () => {
+    try {
+      const clipboardContent = await Clipboard.getStringAsync();
+
+      if (!clipboardContent) {
+        Alert.alert('Empty Clipboard', 'Copy a listing URL to your clipboard first.');
+        return;
+      }
+
+      // Check if it's a valid URL
+      const urlPattern = /^https?:\/\/(www\.)?(redfin|zillow|realtor)\.com/i;
+      if (!urlPattern.test(clipboardContent)) {
+        Alert.alert(
+          'Invalid URL',
+          'Please copy a listing URL from Redfin, Zillow, or Realtor.com.'
+        );
+        return;
+      }
+
+      // Parse URL to extract data
+      const url = new URL(clipboardContent);
+      const pathParts = url.pathname.split('/').filter(Boolean);
+
+      let extractedData: Record<string, string> = {
+        source_url: clipboardContent,
+      };
+
+      if (clipboardContent.includes('redfin.com')) {
+        // Redfin URL format: /STATE/City/Address-Zip/home/ID
+        // e.g., /NJ/Chester/309-North-Rd-07930/home/37150152
+        if (pathParts.length >= 3) {
+          extractedData.state = pathParts[0].toUpperCase();
+          extractedData.city = pathParts[1].replace(/-/g, ' ');
+
+          const addressPart = pathParts[2] || '';
+          // Extract zip from address part
+          const zipMatch = addressPart.match(/(\d{5})(?:-\d{4})?$/);
+          if (zipMatch) {
+            extractedData.zip = zipMatch[1];
+          }
+          // Remove zip from address
+          const address = addressPart
+            .replace(/-?\d{5}(?:-\d{4})?$/, '')
+            .replace(/-/g, ' ')
+            .trim();
+          if (address) {
+            extractedData.address = address;
+          }
+        }
+      } else if (clipboardContent.includes('zillow.com')) {
+        // Zillow URL format: /homedetails/Address-City-State-Zip/ID_zpid
+        const addressMatch = url.pathname.match(/homedetails\/([^/]+)\//);
+        if (addressMatch) {
+          const parts = addressMatch[1].split('-');
+          // Last part is usually ZIP_zpid, second to last is state
+          if (parts.length >= 4) {
+            const zipPart = parts[parts.length - 1];
+            const zipMatch = zipPart.match(/^(\d{5})/);
+            if (zipMatch) extractedData.zip = zipMatch[1];
+
+            extractedData.state = parts[parts.length - 2].toUpperCase();
+            extractedData.city = parts[parts.length - 3].replace(/([A-Z])/g, ' $1').trim();
+
+            // Everything before city is the address
+            const addressParts = parts.slice(0, parts.length - 3);
+            extractedData.address = addressParts.join(' ');
+          }
+        }
+      } else if (clipboardContent.includes('realtor.com')) {
+        // Realtor URL format: /realestateandhomes-detail/Address_City_State_Zip/ID
+        const addressMatch = url.pathname.match(/detail\/([^/]+)/);
+        if (addressMatch) {
+          const parts = addressMatch[1].split('_');
+          if (parts.length >= 4) {
+            extractedData.address = parts[0].replace(/-/g, ' ');
+            extractedData.city = parts[1].replace(/-/g, ' ');
+            extractedData.state = parts[2].toUpperCase();
+            const zipMatch = parts[3].match(/^(\d{5})/);
+            if (zipMatch) extractedData.zip = zipMatch[1];
+          }
+        }
+      }
+
+      // Update form with extracted data
+      setFormData((prev) => ({
+        ...prev,
+        address: extractedData.address || prev.address,
+        city: extractedData.city || prev.city,
+        state: extractedData.state || prev.state,
+        zip: extractedData.zip || prev.zip,
+        source_url: extractedData.source_url || prev.source_url,
+      }));
+
+      const fieldsFound = [
+        extractedData.address,
+        extractedData.city,
+        extractedData.state,
+        extractedData.zip,
+      ].filter(Boolean).length;
+
+      Alert.alert(
+        'URL Imported',
+        `Extracted ${fieldsFound} fields from URL. Fill in the remaining details (price, beds, baths, etc.) manually or take a screenshot of the listing and use "Paste Image" to auto-fill.`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error parsing URL:', error);
+      Alert.alert('Error', 'Failed to parse the URL. Please enter details manually.');
     }
   };
 

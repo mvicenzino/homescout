@@ -11,15 +11,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card, Button, Input } from '../components/ui';
+import { DemoBanner } from '../components/DemoBanner';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { usePropertyStore } from '../store/propertyStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { resetOnboarding } from './auth/OnboardingScreen';
-import { UserType } from '../types';
+import { UserType, HomeBuyerProfile, BrokerProfile } from '../types';
 
 export function SettingsScreen() {
-  const { user, household, signOut, updateProfile } = useAuthStore();
+  const { user, household, signOut, updateProfile, isDemoMode } = useAuthStore();
   const {
     calculatorDefaults,
     setCalculatorDefaults,
@@ -33,6 +34,38 @@ export function SettingsScreen() {
   const { properties } = usePropertyStore();
 
   const [name, setName] = useState(user?.name || '');
+
+  // Get profile from preferences
+  const userProfile = user?.preferences?.profile;
+  const buyerProfile = userProfile as HomeBuyerProfile | undefined;
+  const brokerProfile = userProfile as BrokerProfile | undefined;
+  const isBroker = user?.user_type === 'broker';
+
+  // Profile state - Broker fields
+  const [phone, setPhone] = useState(
+    isBroker ? brokerProfile?.phone || '' : buyerProfile?.phone || ''
+  );
+  const [companyName, setCompanyName] = useState(brokerProfile?.company_name || '');
+  const [licenseNumber, setLicenseNumber] = useState(brokerProfile?.license_number || '');
+  const [licenseState, setLicenseState] = useState(brokerProfile?.license_state || '');
+  const [yearsExperience, setYearsExperience] = useState(
+    brokerProfile?.years_experience?.toString() || ''
+  );
+  const [bio, setBio] = useState(brokerProfile?.bio || '');
+  const [website, setWebsite] = useState(brokerProfile?.website || '');
+
+  // Profile state - Home Buyer fields
+  const [budgetMin, setBudgetMin] = useState(buyerProfile?.budget_min?.toString() || '');
+  const [budgetMax, setBudgetMax] = useState(buyerProfile?.budget_max?.toString() || '');
+  const [minBeds, setMinBeds] = useState(buyerProfile?.min_beds?.toString() || '');
+  const [minBaths, setMinBaths] = useState(buyerProfile?.min_baths?.toString() || '');
+  const [minSqft, setMinSqft] = useState(buyerProfile?.min_sqft?.toString() || '');
+  const [timeline, setTimeline] = useState(buyerProfile?.timeline || '');
+  const [preApproved, setPreApproved] = useState(buyerProfile?.pre_approved || false);
+  const [preApprovalAmount, setPreApprovalAmount] = useState(
+    buyerProfile?.pre_approval_amount?.toString() || ''
+  );
+  const [profileSaved, setProfileSaved] = useState(false);
   const [interestRate, setInterestRate] = useState(calculatorDefaults.interestRate.toString());
   const [downPayment, setDownPayment] = useState(calculatorDefaults.downPaymentPercent.toString());
   const [loanTerm, setLoanTerm] = useState(calculatorDefaults.loanTermYears.toString());
@@ -91,7 +124,49 @@ export function SettingsScreen() {
     if (result.error) {
       Alert.alert('Error', result.error);
     } else {
-      Alert.alert('Success', 'Profile updated');
+      Alert.alert('Success', 'Name updated');
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    let profileData: HomeBuyerProfile | BrokerProfile;
+
+    if (isBroker) {
+      profileData = {
+        phone: phone.trim() || undefined,
+        company_name: companyName.trim() || undefined,
+        license_number: licenseNumber.trim() || undefined,
+        license_state: licenseState.trim() || undefined,
+        years_experience: yearsExperience ? parseInt(yearsExperience) : undefined,
+        bio: bio.trim() || undefined,
+        website: website.trim() || undefined,
+      } as BrokerProfile;
+    } else {
+      profileData = {
+        phone: phone.trim() || undefined,
+        budget_min: budgetMin ? parseInt(budgetMin) : undefined,
+        budget_max: budgetMax ? parseInt(budgetMax) : undefined,
+        min_beds: minBeds ? parseInt(minBeds) : undefined,
+        min_baths: minBaths ? parseFloat(minBaths) : undefined,
+        min_sqft: minSqft ? parseInt(minSqft) : undefined,
+        timeline: timeline || undefined,
+        pre_approved: preApproved,
+        pre_approval_amount: preApprovalAmount ? parseInt(preApprovalAmount) : undefined,
+      } as HomeBuyerProfile;
+    }
+
+    const updatedPreferences = {
+      ...user?.preferences,
+      profile: profileData,
+    };
+
+    const result = await updateProfile({ preferences: updatedPreferences });
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    } else {
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+      Alert.alert('Success', 'Profile saved successfully');
     }
   };
 
@@ -183,8 +258,12 @@ export function SettingsScreen() {
     const result = await updateProfile({ user_type: newType });
     if (result.error) {
       Alert.alert('Error', result.error);
+    } else {
+      Alert.alert(
+        'Account Type Changed',
+        `You are now using HomeScout as a ${newType === 'broker' ? 'Real Estate Pro' : 'Home Buyer'}.`
+      );
     }
-    // Navigation will automatically update based on the new user_type
   };
 
   // Calculate stats
@@ -197,6 +276,7 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.container}>
+      <DemoBanner />
       {/* Header Banner with Gradient */}
       <LinearGradient
         colors={['#4F46E5', '#6366F1', '#8B5CF6']}
@@ -204,7 +284,7 @@ export function SettingsScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.headerBanner}
       >
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <SafeAreaView edges={isDemoMode ? [] : ['top']} style={styles.headerSafeArea}>
           <View style={styles.headerBannerContent}>
             <Text style={styles.headerBannerTitle}>Settings</Text>
             <Text style={styles.headerBannerSubtitle}>Manage your account</Text>
@@ -213,6 +293,26 @@ export function SettingsScreen() {
       </LinearGradient>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <View style={styles.demoBanner}>
+            <View style={styles.demoBannerContent}>
+              <Text style={styles.demoBannerIcon}>
+                {user?.user_type === 'broker' ? '💼' : '🏠'}
+              </Text>
+              <View style={styles.demoBannerText}>
+                <Text style={styles.demoBannerTitle}>Demo Mode Active</Text>
+                <Text style={styles.demoBannerSubtitle}>
+                  Exploring as {user?.user_type === 'broker' ? 'Real Estate Pro' : 'Home Buyer'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.demoBannerButton} onPress={signOut}>
+              <Text style={styles.demoBannerButtonText}>Exit Demo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Account Section */}
         <Card style={styles.card}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -230,7 +330,7 @@ export function SettingsScreen() {
           </View>
 
           <Button
-            title="Update Profile"
+            title="Update Name"
             onPress={handleUpdateProfile}
             variant="outline"
             size="sm"
@@ -289,6 +389,202 @@ export function SettingsScreen() {
               )}
             </TouchableOpacity>
           </View>
+        </Card>
+
+        {/* Profile Section - Different fields based on user type */}
+        <Card style={[styles.card, profileSaved && styles.cardConfigured]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {isBroker ? 'Professional Profile' : 'Buyer Profile'}
+            </Text>
+            {profileSaved && (
+              <View style={[styles.savedBadge, styles.savedBadgeJustSaved]}>
+                <Text style={styles.savedBadgeIcon}>✓</Text>
+                <Text style={[styles.savedBadgeText, styles.savedBadgeTextJustSaved]}>Saved!</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.apiKeyHint}>
+            {isBroker
+              ? 'Add your professional details to display on your profile.'
+              : 'Help us personalize your home search experience.'}
+          </Text>
+
+          {/* Common field */}
+          <Input
+            label="Phone Number"
+            placeholder="(555) 123-4567"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+
+          {isBroker ? (
+            <>
+              {/* Broker-specific fields */}
+              <Input
+                label="Company Name"
+                placeholder="XYZ Realty"
+                value={companyName}
+                onChangeText={setCompanyName}
+              />
+
+              <View style={styles.row}>
+                <View style={styles.flex1}>
+                  <Input
+                    label="License Number"
+                    placeholder="RE12345678"
+                    value={licenseNumber}
+                    onChangeText={setLicenseNumber}
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <Input
+                    label="License State"
+                    placeholder="CA"
+                    value={licenseState}
+                    onChangeText={setLicenseState}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              <Input
+                label="Years of Experience"
+                placeholder="5"
+                value={yearsExperience}
+                onChangeText={setYearsExperience}
+                keyboardType="number-pad"
+              />
+
+              <Input
+                label="Website"
+                placeholder="https://yourwebsite.com"
+                value={website}
+                onChangeText={setWebsite}
+                keyboardType="url"
+                autoCapitalize="none"
+              />
+
+              <Input
+                label="Bio"
+                placeholder="Tell clients about yourself..."
+                value={bio}
+                onChangeText={setBio}
+                multiline
+                numberOfLines={3}
+              />
+            </>
+          ) : (
+            <>
+              {/* Home Buyer-specific fields */}
+              <View style={styles.row}>
+                <View style={styles.flex1}>
+                  <Input
+                    label="Budget Min ($)"
+                    placeholder="300000"
+                    value={budgetMin}
+                    onChangeText={setBudgetMin}
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <Input
+                    label="Budget Max ($)"
+                    placeholder="500000"
+                    value={budgetMax}
+                    onChangeText={setBudgetMax}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={styles.flex1}>
+                  <Input
+                    label="Min Beds"
+                    placeholder="3"
+                    value={minBeds}
+                    onChangeText={setMinBeds}
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <Input
+                    label="Min Baths"
+                    placeholder="2"
+                    value={minBaths}
+                    onChangeText={setMinBaths}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <Input
+                    label="Min Sqft"
+                    placeholder="1500"
+                    value={minSqft}
+                    onChangeText={setMinSqft}
+                    keyboardType="number-pad"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.inputLabel}>Timeline to Buy</Text>
+              <View style={styles.timelineRow}>
+                {[
+                  { value: 'asap', label: 'ASAP' },
+                  { value: '1-3_months', label: '1-3 mo' },
+                  { value: '3-6_months', label: '3-6 mo' },
+                  { value: '6-12_months', label: '6-12 mo' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.timelineOption,
+                      timeline === option.value && styles.timelineOptionSelected,
+                    ]}
+                    onPress={() => setTimeline(option.value as any)}
+                  >
+                    <Text
+                      style={[
+                        styles.timelineText,
+                        timeline === option.value && styles.timelineTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Pre-Approved for Mortgage</Text>
+                <Switch
+                  value={preApproved}
+                  onValueChange={setPreApproved}
+                  trackColor={{ false: colors.borderLight, true: colors.primary }}
+                  thumbColor={colors.surface}
+                />
+              </View>
+
+              {preApproved && (
+                <Input
+                  label="Pre-Approval Amount ($)"
+                  placeholder="450000"
+                  value={preApprovalAmount}
+                  onChangeText={setPreApprovalAmount}
+                  keyboardType="number-pad"
+                />
+              )}
+            </>
+          )}
+
+          <Button
+            title="Save Profile"
+            onPress={handleSaveProfile}
+            variant="outline"
+            size="sm"
+          />
         </Card>
 
         {/* Household Section */}
@@ -795,6 +1091,32 @@ const styles = StyleSheet.create({
   creditScoreTextSelected: {
     color: colors.surface,
   },
+  timelineRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  timelineOption: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+  },
+  timelineOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  timelineText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+    fontWeight: fontWeight.medium,
+  },
+  timelineTextSelected: {
+    color: colors.surface,
+  },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -895,5 +1217,50 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     color: colors.primary,
     fontWeight: fontWeight.bold,
+  },
+  // Demo Banner Styles
+  demoBanner: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  demoBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  demoBannerIcon: {
+    fontSize: 32,
+    marginRight: spacing.md,
+  },
+  demoBannerText: {
+    flex: 1,
+  },
+  demoBannerTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: '#92400E',
+  },
+  demoBannerSubtitle: {
+    fontSize: fontSize.sm,
+    color: '#B45309',
+    marginTop: 2,
+  },
+  demoBannerButton: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  demoBannerButtonText: {
+    color: '#FFFFFF',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
   },
 });

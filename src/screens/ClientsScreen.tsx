@@ -12,20 +12,52 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 import { Card, Button } from '../components/ui';
+import { DemoBanner } from '../components/DemoBanner';
 import { useAuthStore } from '../store/authStore';
+import { useClientStore, propertyMatchesClient } from '../store/clientStore';
+import { usePropertyStore } from '../store/propertyStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { formatCurrency } from '../lib/formatters';
-import { Client } from '../types';
+import { calculateLeadScore } from '../lib/leadScoring';
+import { Client, ClientPropertyStatus } from '../types';
 
 type ClientFilter = 'active' | 'all';
 
+const statusLabels: Record<ClientPropertyStatus, string> = {
+  interested: 'Interested',
+  shown: 'Shown',
+  rejected: 'Rejected',
+  offer_made: 'Offer Made',
+  closed: 'Closed',
+};
+
+const statusColors: Record<ClientPropertyStatus, string> = {
+  interested: colors.primary,
+  shown: colors.primaryLight,
+  rejected: colors.error,
+  offer_made: colors.warning,
+  closed: colors.success,
+};
+
 export function ClientsScreen() {
-  const { user } = useAuthStore();
-  const [clients, setClients] = useState<Client[]>([]);
+  const navigation = useNavigation();
+  const { user, household } = useAuthStore();
+  const {
+    clients,
+    isLoading,
+    fetchClients,
+    addClient,
+    updateClient,
+    deleteClient,
+    unlinkPropertyFromClient,
+    updateClientProperty,
+    subscribeToChanges,
+  } = useClientStore();
+  const { properties } = usePropertyStore();
+
   const [filter, setFilter] = useState<ClientFilter>('active');
-  const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
@@ -46,83 +78,98 @@ export function ClientsScreen() {
     notes: '',
   });
 
+  const { isDemoMode } = useAuthStore();
+
   useEffect(() => {
-    loadClients();
-  }, []);
+    // Don't fetch from Supabase in demo mode - demo data is already loaded
+    if (!isDemoMode) {
+      fetchClients();
 
-  const loadClients = async () => {
-    setIsLoading(true);
-    try {
-      const data = await AsyncStorage.getItem('clients');
-      if (data) setClients(JSON.parse(data));
-    } catch (error) {
-      console.error('Error loading clients:', error);
+      if (household?.id) {
+        const unsubscribe = subscribeToChanges(household.id);
+        return unsubscribe;
+      }
     }
-    setIsLoading(false);
-  };
+  }, [household?.id, isDemoMode]);
 
-  const saveClient = async () => {
+  const handleSaveClient = async () => {
     if (!form.name.trim()) {
       Alert.alert('Error', 'Please enter a client name');
       return;
     }
 
-    const newClient: Client = {
-      id: editingClient?.id || Date.now().toString(),
+    const clientData = {
       name: form.name.trim(),
       email: form.email || undefined,
       phone: form.phone || undefined,
-      status: editingClient?.status || 'active',
+      status: editingClient?.status || 'active' as const,
       source: form.source || undefined,
       budget_min: form.budget_min ? parseInt(form.budget_min) : undefined,
       budget_max: form.budget_max ? parseInt(form.budget_max) : undefined,
       preferred_beds: form.preferred_beds ? parseInt(form.preferred_beds) : undefined,
-      preferred_baths: form.preferred_baths ? parseInt(form.preferred_baths) : undefined,
+      preferred_baths: form.preferred_baths ? parseFloat(form.preferred_baths) : undefined,
       preferred_locations: form.preferred_locations
-        ? form.preferred_locations.split(',').map((l) => l.trim())
+        ? form.preferred_locations.split(',').map((l) => l.trim()).filter(Boolean)
         : undefined,
       timeline: form.timeline || undefined,
       pre_approved: form.pre_approved,
       pre_approval_amount: form.pre_approval_amount ? parseInt(form.pre_approval_amount) : undefined,
       notes: form.notes || undefined,
       created_by: user?.id || '',
-      created_at: editingClient?.created_at || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
-    const updatedClients = editingClient
-      ? clients.map((c) => (c.id === editingClient.id ? newClient : c))
-      : [...clients, newClient];
+    let result;
+    if (editingClient) {
+      result = await updateClient(editingClient.id, clientData);
+    } else {
+      result = await addClient(clientData);
+    }
 
-    setClients(updatedClients);
-    await AsyncStorage.setItem('clients', JSON.stringify(updatedClients));
+    if (result.error) {
+      Alert.alert('Error', result.error);
+      return;
+    }
 
     setShowModal(false);
     setEditingClient(null);
     resetForm();
   };
 
-  const updateClientStatus = async (clientId: string, status: Client['status']) => {
-    const updatedClients = clients.map((c) =>
-      c.id === clientId ? { ...c, status, updated_at: new Date().toISOString() } : c
-    );
-    setClients(updatedClients);
-    await AsyncStorage.setItem('clients', JSON.stringify(updatedClients));
+  const handleUpdateClientStatus = async (clientId: string, status: Client['status']) => {
+    const result = await updateClient(clientId, { status });
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    }
   };
 
-  const deleteClient = async (clientId: string) => {
-    Alert.alert('Delete Client', 'Are you sure?', [
+  const handleDeleteClient = async (clientId: string) => {
+    Alert.alert('Delete Client', 'Are you sure? This will also remove all property links.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          const updatedClients = clients.filter((c) => c.id !== clientId);
-          setClients(updatedClients);
-          await AsyncStorage.setItem('clients', JSON.stringify(updatedClients));
+          const result = await deleteClient(clientId);
+          if (result.error) {
+            Alert.alert('Error', result.error);
+          }
         },
       },
     ]);
+  };
+
+  const handleUnlinkProperty = async (clientId: string, propertyId: string) => {
+    const result = await unlinkPropertyFromClient(clientId, propertyId);
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    }
+  };
+
+  const handleUpdatePropertyStatus = async (clientId: string, propertyId: string, status: ClientPropertyStatus) => {
+    const result = await updateClientProperty(clientId, propertyId, { status });
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    }
   };
 
   const resetForm = () => {
@@ -160,11 +207,21 @@ export function ClientsScreen() {
     }
   };
 
+  // Get matching properties count for a client
+  const getMatchingPropertiesCount = (client: Client) => {
+    return properties.filter((p) => {
+      const { matches } = propertyMatchesClient(p, client);
+      return matches;
+    }).length;
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Clients</Text>
+    <View style={styles.container}>
+      <DemoBanner />
+      <SafeAreaView style={styles.innerContainer} edges={isDemoMode ? ['bottom'] : ['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Clients</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => {
@@ -218,7 +275,7 @@ export function ClientsScreen() {
       <ScrollView
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={loadClients} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => !isDemoMode && fetchClients()} />}
       >
         {filteredClients.length === 0 ? (
           <View style={styles.empty}>
@@ -227,7 +284,9 @@ export function ClientsScreen() {
             <Text style={styles.emptySubtext}>Add clients to track their preferences</Text>
           </View>
         ) : (
-          filteredClients.map((client) => (
+          filteredClients.map((client) => {
+            const leadScore = calculateLeadScore(client);
+            return (
             <Card key={client.id} style={styles.clientCard}>
               <TouchableOpacity
                 onPress={() =>
@@ -235,21 +294,34 @@ export function ClientsScreen() {
                 }
               >
                 <View style={styles.clientHeader}>
-                  <View>
+                  <View style={styles.clientHeaderLeft}>
                     <Text style={styles.clientName}>{client.name}</Text>
                     {client.timeline && (
                       <Text style={styles.clientTimeline}>Timeline: {client.timeline}</Text>
                     )}
                   </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(client.status) + '20' },
-                    ]}
-                  >
-                    <Text style={[styles.statusText, { color: getStatusColor(client.status) }]}>
-                      {client.status.toUpperCase()}
-                    </Text>
+                  <View style={styles.clientHeaderRight}>
+                    {/* Lead Score Badge */}
+                    <View
+                      style={[
+                        styles.leadScoreBadge,
+                        { backgroundColor: leadScore.bgColor },
+                      ]}
+                    >
+                      <Text style={[styles.leadScoreText, { color: leadScore.color }]}>
+                        {leadScore.grade} · {leadScore.label}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        { backgroundColor: getStatusColor(client.status) + '20' },
+                      ]}
+                    >
+                      <Text style={[styles.statusText, { color: getStatusColor(client.status) }]}>
+                        {client.status.toUpperCase()}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -261,17 +333,26 @@ export function ClientsScreen() {
                   </Text>
                 )}
 
-                {/* Pre-approval */}
-                {client.pre_approved && (
-                  <View style={styles.preApproved}>
-                    <Text style={styles.preApprovedText}>
-                      Pre-Approved
-                      {client.pre_approval_amount
-                        ? ` up to ${formatCurrency(client.pre_approval_amount)}`
-                        : ''}
-                    </Text>
-                  </View>
-                )}
+                {/* Pre-approval & Property Count Row */}
+                <View style={styles.badgeRow}>
+                  {client.pre_approved && (
+                    <View style={styles.preApproved}>
+                      <Text style={styles.preApprovedText}>
+                        Pre-Approved
+                        {client.pre_approval_amount
+                          ? ` ${formatCurrency(client.pre_approval_amount)}`
+                          : ''}
+                      </Text>
+                    </View>
+                  )}
+                  {(client.linked_properties?.length || 0) > 0 && (
+                    <View style={styles.propertyCountBadge}>
+                      <Text style={styles.propertyCountText}>
+                        {client.linked_properties?.length} {client.linked_properties?.length === 1 ? 'property' : 'properties'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
 
               {/* Expanded Details */}
@@ -314,10 +395,76 @@ export function ClientsScreen() {
                     {client.source && (
                       <Text style={styles.preferenceText}>Source: {client.source}</Text>
                     )}
+                    <Text style={styles.matchText}>
+                      {getMatchingPropertiesCount(client)} matching properties in your listings
+                    </Text>
                   </View>
 
                   {/* Notes */}
                   {client.notes && <Text style={styles.clientNotes}>{client.notes}</Text>}
+
+                  {/* Linked Properties */}
+                  {client.linked_properties && client.linked_properties.length > 0 && (
+                    <View style={styles.linkedPropertiesSection}>
+                      <Text style={styles.linkedPropertiesTitle}>Linked Properties</Text>
+                      {client.linked_properties.map((lp) => (
+                        <View key={lp.id} style={styles.linkedPropertyCard}>
+                          <View style={styles.linkedPropertyHeader}>
+                            <TouchableOpacity
+                              style={styles.linkedPropertyInfo}
+                              onPress={() => {
+                                // Navigate to property detail
+                                (navigation as any).navigate('Home', {
+                                  screen: 'PropertyDetail',
+                                  params: { propertyId: lp.property_id },
+                                });
+                              }}
+                            >
+                              <Text style={styles.linkedPropertyAddress} numberOfLines={1}>
+                                {lp.property?.address || 'Unknown Property'}
+                              </Text>
+                              {lp.property?.price && (
+                                <Text style={styles.linkedPropertyPrice}>
+                                  {formatCurrency(lp.property.price)}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleUnlinkProperty(client.id, lp.property_id)}
+                              style={styles.unlinkButton}
+                            >
+                              <Text style={styles.unlinkButtonText}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* Status Selector */}
+                          <View style={styles.propertyStatusRow}>
+                            {(['interested', 'shown', 'offer_made', 'closed'] as ClientPropertyStatus[]).map((status) => (
+                              <TouchableOpacity
+                                key={status}
+                                style={[
+                                  styles.propertyStatusOption,
+                                  lp.status === status && { backgroundColor: statusColors[status] + '20', borderColor: statusColors[status] },
+                                ]}
+                                onPress={() => handleUpdatePropertyStatus(client.id, lp.property_id, status)}
+                              >
+                                <Text style={[
+                                  styles.propertyStatusText,
+                                  lp.status === status && { color: statusColors[status] },
+                                ]}>
+                                  {statusLabels[status]}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+
+                          {lp.feedback && (
+                            <Text style={styles.linkedPropertyFeedback}>{lp.feedback}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  )}
 
                   {/* Actions */}
                   <View style={styles.clientActions}>
@@ -349,7 +496,7 @@ export function ClientsScreen() {
                     {client.status === 'active' && (
                       <TouchableOpacity
                         style={styles.actionBtn}
-                        onPress={() => updateClientStatus(client.id, 'closed')}
+                        onPress={() => handleUpdateClientStatus(client.id, 'closed')}
                       >
                         <Text style={[styles.actionBtnText, { color: colors.success }]}>
                           Mark Closed
@@ -360,7 +507,7 @@ export function ClientsScreen() {
                     {client.status !== 'active' && (
                       <TouchableOpacity
                         style={styles.actionBtn}
-                        onPress={() => updateClientStatus(client.id, 'active')}
+                        onPress={() => handleUpdateClientStatus(client.id, 'active')}
                       >
                         <Text style={styles.actionBtnText}>Reactivate</Text>
                       </TouchableOpacity>
@@ -368,7 +515,7 @@ export function ClientsScreen() {
 
                     <TouchableOpacity
                       style={styles.actionBtn}
-                      onPress={() => deleteClient(client.id)}
+                      onPress={() => handleDeleteClient(client.id)}
                     >
                       <Text style={[styles.actionBtnText, { color: colors.error }]}>Delete</Text>
                     </TouchableOpacity>
@@ -376,7 +523,8 @@ export function ClientsScreen() {
                 </View>
               )}
             </Card>
-          ))
+          );
+          })
         )}
       </ScrollView>
 
@@ -556,14 +704,15 @@ export function ClientsScreen() {
 
             <Button
               title={editingClient ? 'Update Client' : 'Add Client'}
-              onPress={saveClient}
+              onPress={handleSaveClient}
               fullWidth
               style={styles.saveButton}
             />
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -571,6 +720,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  innerContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -671,6 +823,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  clientHeaderLeft: {
+    flex: 1,
+  },
+  clientHeaderRight: {
+    marginLeft: spacing.sm,
+  },
   clientName: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
@@ -690,22 +848,47 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
+  leadScoreBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    marginRight: spacing.xs,
+  },
+  leadScoreText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.bold,
+  },
   clientBudget: {
     fontSize: fontSize.md,
     color: colors.textPrimary,
     marginTop: spacing.sm,
   },
-  preApproved: {
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  preApproved: {
     backgroundColor: colors.success + '20',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
-    alignSelf: 'flex-start',
   },
   preApprovedText: {
     fontSize: fontSize.sm,
     color: colors.success,
+    fontWeight: fontWeight.medium,
+  },
+  propertyCountBadge: {
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  propertyCountText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
     fontWeight: fontWeight.medium,
   },
   expandedContent: {
@@ -738,11 +921,80 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
+  matchText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+    marginTop: spacing.xs,
+  },
   clientNotes: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
     fontStyle: 'italic',
     marginBottom: spacing.md,
+  },
+  linkedPropertiesSection: {
+    marginBottom: spacing.md,
+  },
+  linkedPropertiesTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  linkedPropertyCard: {
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  linkedPropertyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  linkedPropertyInfo: {
+    flex: 1,
+  },
+  linkedPropertyAddress: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    color: colors.textPrimary,
+  },
+  linkedPropertyPrice: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  unlinkButton: {
+    padding: spacing.xs,
+  },
+  unlinkButtonText: {
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+  },
+  propertyStatusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  propertyStatusOption: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  propertyStatusText: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  linkedPropertyFeedback: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: spacing.sm,
   },
   clientActions: {
     flexDirection: 'row',

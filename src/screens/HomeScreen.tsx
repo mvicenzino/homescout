@@ -15,10 +15,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../components/ui';
+import { DemoBanner } from '../components/DemoBanner';
 import { usePropertyStore } from '../store/propertyStore';
+import { useAuthStore } from '../store/authStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { formatCurrency, formatBedsBaths } from '../lib/formatters';
-import { Property, PropertyStatus, HomeStackParamList } from '../types';
+import { calculateMatchScore, calculateDaysOnMarket, getDaysOnMarketBadge } from '../lib/matchScore';
+import { Property, PropertyStatus, HomeStackParamList, HomeBuyerProfile } from '../types';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, 'PropertyList'>;
@@ -55,9 +58,24 @@ const statusOptions: PropertyStatus[] = [
 ];
 
 export function HomeScreen({ navigation }: Props) {
-  const { properties, isLoading, fetchProperties, updatePropertyStatus, selectedPropertyIds, togglePropertySelection } = usePropertyStore();
+  const { properties, isLoading, fetchProperties, loadDemoData, updatePropertyStatus, selectedPropertyIds, togglePropertySelection } = usePropertyStore();
+  const { user, isDemoMode } = useAuthStore();
   const [filter, setFilter] = useState<FilterOption>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  const handleRefresh = () => {
+    if (isDemoMode) {
+      // Reload demo data instead of fetching from Supabase
+      loadDemoData();
+    } else {
+      fetchProperties();
+    }
+  };
+
+  // Get buyer profile for match scoring (only for individual users)
+  const buyerProfile = user?.user_type !== 'broker'
+    ? (user?.preferences?.profile as HomeBuyerProfile | undefined)
+    : undefined;
 
   // Collect all unique tags across properties
   const allTags = useMemo(() => {
@@ -156,19 +174,35 @@ export function HomeScreen({ navigation }: Props) {
     const isHot = isHotProperty(item);
     const priceDrop = getPriceDrop(item);
 
+    // Calculate match score for buyers
+    const matchScore = calculateMatchScore(item, buyerProfile);
+
+    // Calculate days on market
+    const daysOnMarket = calculateDaysOnMarket(item.listing_date || item.list_date);
+    const domBadge = getDaysOnMarketBadge(daysOnMarket);
+
     return (
       <Card
         style={[styles.propertyCard, isSelectedForCompare && styles.propertyCardSelected]}
         onPress={() => navigation.navigate('PropertyDetail', { propertyId: item.id })}
       >
-        {/* Top Row: Status Tag + Compare Button */}
+        {/* Top Row: Status Tag + Match Score + Compare Button */}
         <View style={styles.topRow}>
-          <TouchableOpacity
-            style={[styles.statusTag, { backgroundColor: status.bg }]}
-            onPress={() => handleStatusChange(item)}
-          >
-            <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-          </TouchableOpacity>
+          <View style={styles.topLeftBadges}>
+            <TouchableOpacity
+              style={[styles.statusTag, { backgroundColor: status.bg }]}
+              onPress={() => handleStatusChange(item)}
+            >
+              <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+            </TouchableOpacity>
+            {matchScore && (
+              <View style={[styles.matchBadge, { backgroundColor: matchScore.color + '20' }]}>
+                <Text style={[styles.matchBadgeText, { color: matchScore.color }]}>
+                  {matchScore.score}% {matchScore.label}
+                </Text>
+              </View>
+            )}
+          </View>
           <TouchableOpacity
             style={[styles.compareButton, isSelectedForCompare && styles.compareButtonActive]}
             onPress={() => togglePropertySelection(item.id)}
@@ -190,22 +224,27 @@ export function HomeScreen({ navigation }: Props) {
             )}
           </View>
           {/* Quick Action Badges */}
-          {(isHot || priceDrop) && (
-            <View style={styles.quickBadges}>
-              {isHot && (
-                <View style={styles.hotBadge}>
-                  <Text style={styles.hotBadgeText}>HOT</Text>
-                </View>
-              )}
-              {priceDrop && (
-                <View style={styles.priceDropBadge}>
-                  <Text style={styles.priceDropBadgeText}>
-                    -{priceDrop.percent.toFixed(0)}%
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
+          <View style={styles.quickBadges}>
+            {domBadge && (
+              <View style={[styles.domBadge, { backgroundColor: domBadge.bgColor }]}>
+                <Text style={[styles.domBadgeText, { color: domBadge.color }]}>
+                  {domBadge.label}
+                </Text>
+              </View>
+            )}
+            {isHot && !domBadge && (
+              <View style={styles.hotBadge}>
+                <Text style={styles.hotBadgeText}>HOT</Text>
+              </View>
+            )}
+            {priceDrop && (
+              <View style={styles.priceDropBadge}>
+                <Text style={styles.priceDropBadgeText}>
+                  -{priceDrop.percent.toFixed(0)}%
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Address */}
@@ -262,6 +301,7 @@ export function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <DemoBanner />
       {/* Header Banner with Gradient */}
       <LinearGradient
         colors={['#4F46E5', '#6366F1', '#8B5CF6']}
@@ -269,7 +309,7 @@ export function HomeScreen({ navigation }: Props) {
         end={{ x: 1, y: 1 }}
         style={styles.headerBanner}
       >
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <SafeAreaView edges={isDemoMode ? [] : ['top']} style={styles.headerSafeArea}>
           <View style={styles.headerBannerContent}>
             <Text style={styles.headerBannerTitle}>Properties</Text>
             <Text style={styles.headerBannerSubtitle}>
@@ -381,7 +421,7 @@ export function HomeScreen({ navigation }: Props) {
         renderItem={renderProperty}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={fetchProperties} />
+          <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -609,6 +649,31 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: fontWeight.bold,
     color: '#FFFFFF',
+  },
+  domBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  domBadgeText: {
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+  },
+  topLeftBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  matchBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+  },
+  matchBadgeText: {
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
   },
   statusTag: {
     paddingVertical: 4,

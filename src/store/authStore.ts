@@ -3,6 +3,14 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
 import { User, Household, UserType } from '../types';
+import {
+  demoBuyerUser,
+  demoBrokerUser,
+  demoHousehold,
+  DEMO_BUYER_ID,
+  DEMO_BROKER_ID,
+} from '../lib/demoData';
+import { initializeDemoMode, clearDemoMode } from '../lib/demoMode';
 
 // Required for Google OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -13,12 +21,14 @@ interface AuthState {
   session: any | null;
   isLoading: boolean;
   isInitialized: boolean;
+  isDemoMode: boolean;
 
   // Actions
   initialize: () => Promise<void>;
   signUp: (email: string, password: string, name: string, userType?: UserType) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
+  signInAsDemo: (type: 'buyer' | 'broker') => Promise<void>;
   signOut: () => Promise<void>;
   createHousehold: (name: string) => Promise<{ error?: string; inviteCode?: string }>;
   joinHousehold: (inviteCode: string) => Promise<{ error?: string }>;
@@ -31,6 +41,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   isLoading: true,
   isInitialized: false,
+  isDemoMode: false,
 
   initialize: async () => {
     try {
@@ -303,9 +314,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  signInAsDemo: async (type: 'buyer' | 'broker') => {
+    set({ isLoading: true });
+
+    // Get the appropriate demo user based on type
+    const demoUser = type === 'buyer' ? demoBuyerUser : demoBrokerUser;
+
+    // Set the demo user and household
+    set({
+      user: demoUser,
+      household: demoHousehold,
+      session: { demo: true },
+      isDemoMode: true,
+    });
+
+    // Initialize demo data in all stores
+    await initializeDemoMode(type);
+
+    set({ isLoading: false });
+  },
+
   signOut: async () => {
-    await supabase.auth.signOut();
-    set({ user: null, household: null, session: null });
+    const { isDemoMode } = get();
+
+    if (isDemoMode) {
+      // Clear demo data from all stores
+      await clearDemoMode();
+    } else {
+      await supabase.auth.signOut();
+    }
+
+    set({ user: null, household: null, session: null, isDemoMode: false });
   },
 
   createHousehold: async (name: string) => {

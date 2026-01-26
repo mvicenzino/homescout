@@ -24,9 +24,11 @@ import * as Sharing from 'expo-sharing';
 import * as Clipboard from 'expo-clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card, Badge, getStatusBadgeVariant, StarRating, Button } from '../components/ui';
+import { AIIntelligence } from '../components/AIIntelligence';
 import { usePropertyStore, getPropertyWithRatings } from '../store/propertyStore';
 import { useAuthStore } from '../store/authStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useClientStore, getClientPropertyStatus } from '../store/clientStore';
 import { analyzeProperty, PropertyAnalysis, SavedAnalysis, savePropertyAnalysis, getPropertyAnalysis } from '../lib/openai';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import {
@@ -61,8 +63,10 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
   const { propertyId } = route.params;
   const { properties, isLoading, fetchProperties, updatePropertyStatus, setRating, addNote, deleteNote, addPhoto, addTag, removeTag, deleteProperty } =
     usePropertyStore();
-  const { user } = useAuthStore();
+  const { user, isDemoMode } = useAuthStore();
   const { calculatorDefaults, financialProfile, hasAnthropicKey } = useSettingsStore();
+  const { clients, fetchClients, linkPropertyToClient, unlinkPropertyFromClient } = useClientStore();
+  const isBroker = user?.user_type === 'broker';
 
   const property = properties.find((p) => p.id === propertyId);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -98,10 +102,25 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
   // Activities state
   const [activities, setActivities] = useState<Activity[]>([]);
 
-  // Load offers, documents, and activities
+  // Client linking state (for brokers)
+  const [showClientPicker, setShowClientPicker] = useState(false);
+
+  // Get clients linked to this property
+  const linkedClients = useMemo(() => {
+    if (!propertyId) return [];
+    return clients.filter((c) =>
+      c.linked_properties?.some((lp) => lp.property_id === propertyId)
+    );
+  }, [clients, propertyId]);
+
+  // Load offers, documents, activities, and clients
   useEffect(() => {
     loadOffersAndDocs();
-  }, [propertyId]);
+    // Don't fetch from Supabase in demo mode - demo data is already loaded
+    if (isBroker && !isDemoMode) {
+      fetchClients();
+    }
+  }, [propertyId, isBroker, isDemoMode]);
 
   const loadOffersAndDocs = async () => {
     try {
@@ -440,6 +459,25 @@ export function PropertyDetailScreen({ navigation, route }: Props) {
     );
   };
 
+  // Client linking handlers (for brokers)
+  const handleLinkClient = async (clientId: string) => {
+    const result = await linkPropertyToClient(clientId, propertyId);
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    }
+  };
+
+  const handleUnlinkClient = async (clientId: string) => {
+    const result = await unlinkPropertyFromClient(clientId, propertyId);
+    if (result.error) {
+      Alert.alert('Error', result.error);
+    }
+  };
+
+  const isClientLinked = (clientId: string) => {
+    return linkedClients.some((c) => c.id === clientId);
+  };
+
   const hasFinancialData = Boolean(
     financialProfile.annual_household_income ||
     financialProfile.available_down_payment ||
@@ -560,14 +598,33 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerLeft}>
           <Text style={styles.price}>{formatCurrency(property.price)}</Text>
           <Text style={styles.address}>{property.address}</Text>
           <Text style={styles.location}>
             {property.city}, {property.state} {property.zip}
           </Text>
+          {/* Linked Clients Badge (for brokers) */}
+          {isBroker && linkedClients.length > 0 && (
+            <TouchableOpacity
+              style={styles.linkedClientsBadge}
+              onPress={() => setShowClientPicker(true)}
+            >
+              <Text style={styles.linkedClientsText}>
+                👥 {linkedClients.length} {linkedClients.length === 1 ? 'client' : 'clients'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.headerButtons}>
+          {isBroker && (
+            <TouchableOpacity
+              onPress={() => setShowClientPicker(true)}
+              style={styles.linkClientButton}
+            >
+              <Text style={styles.linkClientButtonText}>+ Client</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={handleShareProperty}
             style={styles.shareButton}
@@ -1771,6 +1828,14 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
                     </View>
                   </Card>
                 )}
+
+                {/* AI Intelligence Tools */}
+                <AIIntelligence
+                  property={property}
+                  buyerProfile={user?.preferences?.profile as any}
+                  financialProfile={financialProfile}
+                  hasApiKey={hasAnthropicKey}
+                />
               </>
             )}
           </View>
@@ -2197,6 +2262,83 @@ ${property.notes?.filter(n => n.type === 'con').map(n => `- ${n.content}`).join(
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Client Picker Modal (for brokers) */}
+      <Modal
+        visible={showClientPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowClientPicker(false)}
+      >
+        <SafeAreaView style={styles.clientPickerContainer}>
+          <View style={styles.clientPickerHeader}>
+            <Text style={styles.clientPickerTitle}>Link to Client</Text>
+            <TouchableOpacity onPress={() => setShowClientPicker(false)}>
+              <Text style={styles.clientPickerClose}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.clientPickerContent}>
+            {clients.length === 0 ? (
+              <View style={styles.clientPickerEmpty}>
+                <Text style={styles.clientPickerEmptyIcon}>👥</Text>
+                <Text style={styles.clientPickerEmptyText}>No clients yet</Text>
+                <Text style={styles.clientPickerEmptySubtext}>
+                  Add clients in the Clients tab first
+                </Text>
+              </View>
+            ) : (
+              clients.map((client) => {
+                const linked = isClientLinked(client.id);
+                const linkStatus = client.linked_properties?.find(
+                  (lp) => lp.property_id === propertyId
+                );
+                return (
+                  <TouchableOpacity
+                    key={client.id}
+                    style={[
+                      styles.clientPickerItem,
+                      linked && styles.clientPickerItemLinked,
+                    ]}
+                    onPress={() => {
+                      if (linked) {
+                        handleUnlinkClient(client.id);
+                      } else {
+                        handleLinkClient(client.id);
+                      }
+                    }}
+                  >
+                    <View style={styles.clientPickerItemContent}>
+                      <Text style={styles.clientPickerItemName}>{client.name}</Text>
+                      {client.budget_max && (
+                        <Text style={styles.clientPickerItemBudget}>
+                          Budget: up to {formatCurrency(client.budget_max)}
+                        </Text>
+                      )}
+                      {client.preferred_locations && client.preferred_locations.length > 0 && (
+                        <Text style={styles.clientPickerItemPrefs}>
+                          {client.preferred_beds || '?'}bd / {client.preferred_baths || '?'}ba • {client.preferred_locations.slice(0, 2).join(', ')}
+                        </Text>
+                      )}
+                      {linkStatus && (
+                        <Text style={styles.clientPickerItemStatus}>
+                          Status: {linkStatus.status.replace('_', ' ')}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[
+                      styles.clientPickerCheckbox,
+                      linked && styles.clientPickerCheckboxChecked,
+                    ]}>
+                      {linked && <Text style={styles.clientPickerCheckmark}>✓</Text>}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2259,6 +2401,134 @@ const styles = StyleSheet.create({
   editButtonText: {
     color: colors.primary,
     fontWeight: fontWeight.semibold,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  linkClientButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+  },
+  linkClientButtonText: {
+    color: colors.textInverse,
+    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.sm,
+  },
+  linkedClientsBadge: {
+    marginTop: spacing.xs,
+    backgroundColor: colors.primary + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    alignSelf: 'flex-start',
+  },
+  linkedClientsText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+  },
+  // Client Picker Modal
+  clientPickerContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  clientPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  clientPickerTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  clientPickerClose: {
+    fontSize: fontSize.md,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+  },
+  clientPickerContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  clientPickerEmpty: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl * 2,
+  },
+  clientPickerEmptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+  clientPickerEmptyText: {
+    fontSize: fontSize.lg,
+    color: colors.textSecondary,
+  },
+  clientPickerEmptySubtext: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  clientPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  clientPickerItemLinked: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '08',
+  },
+  clientPickerItemContent: {
+    flex: 1,
+  },
+  clientPickerItemName: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+  },
+  clientPickerItemBudget: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  clientPickerItemPrefs: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  clientPickerItemStatus: {
+    fontSize: fontSize.xs,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+    marginTop: spacing.xs,
+  },
+  clientPickerCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clientPickerCheckboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  clientPickerCheckmark: {
+    color: colors.textInverse,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   statsRow: {
     flexDirection: 'row',

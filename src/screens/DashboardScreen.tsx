@@ -12,32 +12,40 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Card } from '../components/ui';
+import { DemoBanner } from '../components/DemoBanner';
 import { usePropertyStore } from '../store/propertyStore';
 import { useAuthStore } from '../store/authStore';
+import { useClientStore } from '../store/clientStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
 import { formatCurrency } from '../lib/formatters';
-import { Showing, Client, Activity } from '../types';
+import { getLeadScoreDistribution } from '../lib/leadScoring';
+import { Showing, Activity, BrokerProfile } from '../types';
 
 export function DashboardScreen() {
   const navigation = useNavigation<any>();
   const { properties, isLoading, fetchProperties } = usePropertyStore();
-  const { user } = useAuthStore();
+  const { user, isDemoMode } = useAuthStore();
+  const { clients, fetchClients } = useClientStore();
+
+  // Get company name from profile in preferences
+  const brokerProfile = user?.preferences?.profile as BrokerProfile | undefined;
+  const companyName = brokerProfile?.company_name;
 
   const [showings, setShowings] = useState<Showing[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
     loadData();
-  }, []);
+    // Don't fetch from Supabase in demo mode - demo data is already loaded
+    if (!isDemoMode) {
+      fetchClients();
+    }
+  }, [isDemoMode]);
 
   const loadData = async () => {
     try {
       const showingsData = await AsyncStorage.getItem('showings');
       if (showingsData) setShowings(JSON.parse(showingsData));
-
-      const clientsData = await AsyncStorage.getItem('clients');
-      if (clientsData) setClients(JSON.parse(clientsData));
 
       const activitiesData = await AsyncStorage.getItem('activities');
       if (activitiesData) setActivities(JSON.parse(activitiesData));
@@ -74,6 +82,9 @@ export function DashboardScreen() {
 
     const activeClients = clients.filter((c) => c.status === 'active').length;
 
+    // Lead score distribution
+    const leadDistribution = getLeadScoreDistribution(clients);
+
     return {
       totalProperties,
       byStatus,
@@ -81,6 +92,8 @@ export function DashboardScreen() {
       priceRange,
       upcomingShowings,
       activeClients,
+      leadDistribution,
+      hotLeads: leadDistribution.hot + leadDistribution.warm,
     };
   }, [properties, showings, clients]);
 
@@ -125,6 +138,7 @@ export function DashboardScreen() {
 
   return (
     <View style={styles.container}>
+      <DemoBanner />
       {/* Header Banner with Gradient */}
       <LinearGradient
         colors={['#4F46E5', '#6366F1', '#8B5CF6']}
@@ -132,10 +146,11 @@ export function DashboardScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.headerBanner}
       >
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <SafeAreaView edges={isDemoMode ? [] : ['top']} style={styles.headerSafeArea}>
           <View style={styles.headerBannerContent}>
             <Text style={styles.greeting}>Welcome back</Text>
             <Text style={styles.userName}>{user?.name || 'User'}</Text>
+            {companyName && <Text style={styles.companyName}>{companyName}</Text>}
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -146,7 +161,11 @@ export function DashboardScreen() {
           <RefreshControl
             refreshing={isLoading}
             onRefresh={() => {
-              fetchProperties();
+              // In demo mode, just reload local data (don't fetch from Supabase)
+              if (!isDemoMode) {
+                fetchProperties();
+                fetchClients();
+              }
               loadData();
             }}
           />
@@ -174,10 +193,11 @@ export function DashboardScreen() {
             color="#8B5CF6"
           />
           <StatCard
-            title="Clients"
-            value={stats.activeClients}
-            subtitle="Active"
-            color={colors.success}
+            title="Hot Leads"
+            value={stats.hotLeads}
+            subtitle={`of ${clients.length} clients`}
+            color="#DC2626"
+            onPress={() => navigation.navigate('Clients')}
           />
         </View>
 
@@ -229,6 +249,39 @@ export function DashboardScreen() {
             </View>
           </View>
         </Card>
+
+        {/* Lead Quality Distribution */}
+        {clients.length > 0 && (
+          <Card style={styles.card}>
+            <Text style={styles.cardTitle}>Lead Quality</Text>
+            <View style={styles.leadQualityGrid}>
+              <View style={[styles.leadQualityItem, { borderLeftColor: '#DC2626' }]}>
+                <Text style={[styles.leadQualityValue, { color: '#DC2626' }]}>
+                  {stats.leadDistribution.hot}
+                </Text>
+                <Text style={styles.leadQualityLabel}>Hot</Text>
+              </View>
+              <View style={[styles.leadQualityItem, { borderLeftColor: '#EA580C' }]}>
+                <Text style={[styles.leadQualityValue, { color: '#EA580C' }]}>
+                  {stats.leadDistribution.warm}
+                </Text>
+                <Text style={styles.leadQualityLabel}>Warm</Text>
+              </View>
+              <View style={[styles.leadQualityItem, { borderLeftColor: '#D97706' }]}>
+                <Text style={[styles.leadQualityValue, { color: '#D97706' }]}>
+                  {stats.leadDistribution.active}
+                </Text>
+                <Text style={styles.leadQualityLabel}>Active</Text>
+              </View>
+              <View style={[styles.leadQualityItem, { borderLeftColor: '#0891B2' }]}>
+                <Text style={[styles.leadQualityValue, { color: '#0891B2' }]}>
+                  {stats.leadDistribution.nurture}
+                </Text>
+                <Text style={styles.leadQualityLabel}>Nurture</Text>
+              </View>
+            </View>
+          </Card>
+        )}
 
         {/* Upcoming Showings */}
         <Card style={styles.card}>
@@ -367,6 +420,11 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
     color: '#FFFFFF',
   },
+  companyName: {
+    fontSize: fontSize.sm,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -455,6 +513,26 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
     color: colors.textPrimary,
+  },
+  leadQualityGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  leadQualityItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderLeftWidth: 3,
+    marginHorizontal: 2,
+  },
+  leadQualityValue: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+  },
+  leadQualityLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   showingItem: {
     flexDirection: 'row',

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F8FAFC;
+      color: #0F172A;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #2563EB, #7C3AED);
+      color: white;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .content {
+      padding: 16px;
+    }
+
+    .status {
+      text-align: center;
+      padding: 24px 16px;
+    }
+
+    .status-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .status-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .status-message {
+      font-size: 14px;
+      color: #64748B;
+      line-height: 1.5;
+    }
+
+    .property-card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+
+    .property-address {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .property-price {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2563EB;
+      margin-bottom: 8px;
+    }
+
+    .property-details {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: #64748B;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563EB, #7C3AED);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #2563EB;
+      border: 2px solid #E2E8F0;
+      margin-top: 8px;
+    }
+
+    .btn-secondary:hover {
+      border-color: #2563EB;
+    }
+
+    .success {
+      color: #22C55E;
+    }
+
+    .error {
+      color: #EF4444;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: #2563EB;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #F1F5F9;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .user-badge button {
+      background: none;
+      border: none;
+      color: #64748B;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .user-badge button:hover {
+      color: #EF4444;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .footer {
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 12px;
+      color: #94A3B8;
+      border-top: 1px solid #E2E8F0;
+    }
+
+    .footer a {
+      color: #2563EB;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <svg viewBox="0 0 120 120" fill="none">
+      <circle cx="60" cy="60" r="56" fill="white" fill-opacity="0.2"/>
+      <path d="M60 25L30 50V85C30 87.2 31.8 89 34 89H50V67C50 64.8 51.8 63 54 63H66C68.2 63 70 64.8 70 67V89H86C88.2 89 90 87.2 90 85V50L60 25Z" fill="white"/>
+      <circle cx="60" cy="55" r="10" fill="rgba(37,99,235,0.3)" stroke="white" stroke-width="3"/>
+      <line x1="67" y1="62" x2="74" y2="69" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <h1>HomeScout</h1>
+  </div>
+
+  <div class="content">
+    <div id="loading" class="status">
+      <div class="status-icon"><span class="loading" style="width:32px;height:32px;border-width:3px;border-color:rgba(37,99,235,0.2);border-top-color:#2563EB;"></span></div>
+      <div class="status-title">Scanning page...</div>
+      <div class="status-message">Looking for property listing data</div>
+    </div>
+
+    <div id="login-required" class="status" style="display:none;">
+      <div class="status-title" style="margin-bottom: 12px;">Sign in to HomeScout</div>
+      <input type="email" id="login-email" placeholder="Email" class="input-field">
+      <input type="password" id="login-password" placeholder="Password" class="input-field">
+      <button class="btn btn-primary" id="login-btn" style="margin-top: 8px;">Sign In</button>
+      <div id="login-error" class="status-message error" style="margin-top: 8px; display: none;"></div>
+      <div class="status-message" style="margin-top: 12px;">Sign in with your HomeScout account to save properties directly to the app.</div>
+    </div>
+
+    <div id="not-listing" class="status" style="display:none;">
+      <div class="status-icon">🏠</div>
+      <div class="status-title">No listing found</div>
+      <div class="status-message">Navigate to a property listing on Redfin, Zillow, or Realtor.com to save it to HomeScout.</div>
+    </div>
+
+    <div id="property-found" style="display:none;">
+      <div class="property-card">
+        <div class="property-address" id="property-address">Loading...</div>
+        <div class="property-price" id="property-price">$---</div>
+        <div class="property-details">
+          <span id="property-beds">-- beds</span>
+          <span id="property-baths">-- baths</span>
+          <span id="property-sqft">-- sqft</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="save-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+        </svg>
+        Save to HomeScout
+      </button>
+
+      <button class="btn btn-secondary" id="copy-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+        Copy JSON Data
+      </button>
+
+      <button class="btn btn-secondary" id="copy-simulator-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        Copy Simulator Command
+      </button>
+
+      <button class="btn btn-secondary" id="show-qr-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <rect x="14" y="14" width="3" height="3"/>
+          <rect x="18" y="14" width="3" height="3"/>
+          <rect x="14" y="18" width="3" height="3"/>
+          <rect x="18" y="18" width="3" height="3"/>
+        </svg>
+        Show QR Code (scan with iPhone)
+      </button>
+    </div>
+
+    <div id="qr-code" class="status" style="display:none;">
+      <div class="status-title">Scan with iPhone Camera</div>
+      <canvas id="qr-canvas" width="200" height="200" style="margin: 16px auto; display: block; border-radius: 8px;"></canvas>
+      <div class="status-message">Open your iPhone camera and point at this QR code. Tap the notification to open HomeScout.</div>
+      <button class="btn btn-secondary" id="back-btn" style="margin-top: 12px;">Back</button>
+    </div>
+
+    <div id="success" class="status" style="display:none;">
+      <div class="status-icon success">✓</div>
+      <div class="status-title success">Saved!</div>
+      <div class="status-message">Property has been added to HomeScout. Open the app to see it.</div>
+    </div>
+
+    <div id="copied" class="status" style="display:none;">
+      <div class="status-icon success">📋</div>
+      <div class="status-title success">Copied!</div>
+      <div class="status-message">Property data copied to clipboard. Paste it in HomeScout app.</div>
+    </div>
+
+    <div id="simulator-copied" class="status" style="display:none;">
+      <div class="status-icon success">💻</div>
+      <div class="status-title success">Simulator Command Copied!</div>
+      <div class="status-message">Paste the command in Terminal to send this property to your iOS Simulator.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Powered by <a href="https://homescout.app" target="_blank">HomeScout</a>
+  </div>
+
+  <script src="supabase.js"></script>
+  <script src="qrcode.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

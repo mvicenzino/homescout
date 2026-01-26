@@ -12,6 +12,7 @@ import {
   PropertyWithRatings,
   NoteType,
 } from '../types';
+import { demoProperties } from '../lib/demoData';
 
 interface PropertyState {
   properties: Property[];
@@ -47,6 +48,10 @@ interface PropertyState {
 
   // Real-time
   subscribeToChanges: (householdId: string) => () => void;
+
+  // Demo Mode
+  loadDemoData: () => void;
+  clearDemoData: () => void;
 }
 
 export const usePropertyStore = create<PropertyState>()(
@@ -470,6 +475,14 @@ export const usePropertyStore = create<PropertyState>()(
         return () => {
           supabase.removeChannel(channel);
         };
+      },
+
+      loadDemoData: () => {
+        set({ properties: demoProperties, isLoading: false, error: null });
+      },
+
+      clearDemoData: () => {
+        set({ properties: [], selectedPropertyIds: [] });
       },
     }),
     {

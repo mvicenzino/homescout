@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { Card, Button } from '../components/ui';
+import { DemoBanner } from '../components/DemoBanner';
 import { usePropertyStore } from '../store/propertyStore';
 import { useAuthStore } from '../store/authStore';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../constants/theme';
@@ -25,7 +26,7 @@ type ShowingFilter = 'upcoming' | 'past' | 'all';
 export function ShowingsScreen() {
   const navigation = useNavigation<any>();
   const { properties } = usePropertyStore();
-  const { user } = useAuthStore();
+  const { user, isDemoMode } = useAuthStore();
 
   const [showings, setShowings] = useState<Showing[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -166,10 +167,12 @@ export function ShowingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Showings</Text>
+    <View style={styles.container}>
+      <DemoBanner />
+      <SafeAreaView style={styles.innerContainer} edges={isDemoMode ? ['bottom'] : ['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Showings</Text>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => {
@@ -463,7 +466,8 @@ export function ShowingsScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -471,6 +475,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  innerContainer: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

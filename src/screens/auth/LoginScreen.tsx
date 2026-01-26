@@ -99,7 +99,11 @@ export function LoginScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const { signIn, signInWithGoogle, isLoading } = useAuthStore();
+  const { signIn, signInAsDemo, isLoading } = useAuthStore();
+
+  const handleDemoLogin = async (type: 'buyer' | 'broker') => {
+    await signInAsDemo(type);
+  };
 
   // Load remembered email on mount
   useEffect(() => {
@@ -142,13 +146,6 @@ export function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setError('');
-    const result = await signInWithGoogle();
-    if (result.error) {
-      setError(result.error);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -256,34 +253,6 @@ export function LoginScreen({ navigation }: Props) {
                   fullWidth
                   style={styles.button}
                 />
-
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
-                  <Svg width={20} height={20} viewBox="0 0 24 24">
-                    <Path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    />
-                    <Path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    />
-                    <Path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      fill="#FBBC05"
-                    />
-                    <Path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    />
-                  </Svg>
-                  <Text style={styles.googleButtonText}>Continue with Google</Text>
-                </TouchableOpacity>
               </View>
             </View>
 
@@ -293,6 +262,47 @@ export function LoginScreen({ navigation }: Props) {
               <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
                 <Text style={styles.footerLink}>Sign Up</Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Demo Mode Section */}
+            <View style={styles.demoSection}>
+              <View style={styles.demoDivider}>
+                <View style={styles.demoDividerLine} />
+                <Text style={styles.demoDividerText}>Try Demo Mode</Text>
+                <View style={styles.demoDividerLine} />
+              </View>
+              <Text style={styles.demoDescription}>
+                Explore all features with sample data - no account needed
+              </Text>
+              <View style={styles.demoButtons}>
+                <TouchableOpacity
+                  style={styles.demoButton}
+                  onPress={() => handleDemoLogin('buyer')}
+                >
+                  <View style={styles.demoButtonIcon}>
+                    <Text style={styles.demoButtonEmoji}>🏠</Text>
+                  </View>
+                  <View style={styles.demoButtonContent}>
+                    <Text style={styles.demoButtonTitle}>Home Buyer Demo</Text>
+                    <Text style={styles.demoButtonSubtitle}>Search, compare & track properties</Text>
+                  </View>
+                  <Text style={styles.demoButtonArrow}>→</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.demoButton}
+                  onPress={() => handleDemoLogin('broker')}
+                >
+                  <View style={[styles.demoButtonIcon, styles.demoButtonIconBroker]}>
+                    <Text style={styles.demoButtonEmoji}>💼</Text>
+                  </View>
+                  <View style={styles.demoButtonContent}>
+                    <Text style={styles.demoButtonTitle}>Real Estate Pro Demo</Text>
+                    <Text style={styles.demoButtonSubtitle}>Manage clients, showings & leads</Text>
+                  </View>
+                  <Text style={styles.demoButtonArrow}>→</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -426,37 +436,6 @@ const styles = StyleSheet.create({
   button: {
     marginTop: spacing.sm,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.lg,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    marginHorizontal: spacing.md,
-    color: colors.textMuted,
-    fontSize: fontSize.sm,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  googleButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -471,5 +450,82 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: fontSize.md,
     fontWeight: '600',
+  },
+  // Demo Section Styles
+  demoSection: {
+    marginTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  demoDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  demoDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  demoDividerText: {
+    paddingHorizontal: spacing.md,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  demoDescription: {
+    textAlign: 'center',
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+  },
+  demoButtons: {
+    gap: spacing.sm,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  demoButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  demoButtonIconBroker: {
+    backgroundColor: '#FEF3C7',
+  },
+  demoButtonEmoji: {
+    fontSize: 24,
+  },
+  demoButtonContent: {
+    flex: 1,
+  },
+  demoButtonTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  demoButtonSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  demoButtonArrow: {
+    fontSize: fontSize.lg,
+    color: colors.textMuted,
+    marginLeft: spacing.sm,
   },
 });

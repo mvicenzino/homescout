@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '../../constants/theme';
 import { Logo, FeatureIcon } from '../../components/Logo';
+import { useAuthStore } from '../../store/authStore';
 
 const { width } = Dimensions.get('window');
 
@@ -66,8 +67,10 @@ type Props = {
 
 export function OnboardingScreen({ navigation, onComplete }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showDemoOptions, setShowDemoOptions] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
+  const { signInAsDemo, isLoading } = useAuthStore();
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
@@ -84,6 +87,11 @@ export function OnboardingScreen({ navigation, onComplete }: Props) {
   const completeOnboarding = async () => {
     await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
     onComplete();
+  };
+
+  const handleDemoLogin = async (type: 'buyer' | 'broker') => {
+    await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    await signInAsDemo(type);
   };
 
   const renderSlide = ({ item, index }: { item: OnboardingSlide; index: number }) => {
@@ -171,19 +179,66 @@ export function OnboardingScreen({ navigation, onComplete }: Props) {
 
       {/* Buttons */}
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={handleNext}
-        >
-          <Text style={styles.primaryButtonText}>
-            {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
-          </Text>
-        </TouchableOpacity>
+        {!showDemoOptions ? (
+          <>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleNext}
+            >
+              <Text style={styles.primaryButtonText}>
+                {currentIndex === slides.length - 1 ? 'Get Started' : 'Next'}
+              </Text>
+            </TouchableOpacity>
 
-        {currentIndex === slides.length - 1 && (
-          <Text style={styles.termsText}>
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </Text>
+            <TouchableOpacity
+              style={styles.demoButton}
+              onPress={() => setShowDemoOptions(true)}
+            >
+              <Text style={styles.demoButtonText}>Try Demo Mode</Text>
+            </TouchableOpacity>
+
+            {currentIndex === slides.length - 1 && (
+              <Text style={styles.termsText}>
+                By continuing, you agree to our Terms of Service and Privacy Policy
+              </Text>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={styles.demoTitle}>Choose Demo Mode</Text>
+            <Text style={styles.demoSubtitle}>Explore all features with sample data</Text>
+
+            <TouchableOpacity
+              style={styles.demoOptionButton}
+              onPress={() => handleDemoLogin('buyer')}
+              disabled={isLoading}
+            >
+              <Text style={styles.demoOptionEmoji}>🏠</Text>
+              <View style={styles.demoOptionContent}>
+                <Text style={styles.demoOptionTitle}>Home Buyer Demo</Text>
+                <Text style={styles.demoOptionSubtitle}>Search, compare & track properties</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.demoOptionButton, styles.demoOptionButtonBroker]}
+              onPress={() => handleDemoLogin('broker')}
+              disabled={isLoading}
+            >
+              <Text style={styles.demoOptionEmoji}>💼</Text>
+              <View style={styles.demoOptionContent}>
+                <Text style={styles.demoOptionTitle}>Real Estate Pro Demo</Text>
+                <Text style={styles.demoOptionSubtitle}>Manage clients, showings & leads</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => setShowDemoOptions(false)}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -311,5 +366,69 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.md,
     lineHeight: 18,
+  },
+  demoButton: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  demoButtonText: {
+    fontSize: fontSize.md,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
+  },
+  demoTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  demoSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  demoOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  demoOptionButtonBroker: {
+    borderColor: '#FEF3C7',
+    backgroundColor: '#FFFBEB',
+  },
+  demoOptionEmoji: {
+    fontSize: 32,
+    marginRight: spacing.md,
+  },
+  demoOptionContent: {
+    flex: 1,
+  },
+  demoOptionTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  demoOptionSubtitle: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  backButton: {
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  backButtonText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+    fontWeight: fontWeight.medium,
   },
 });

@@ -43,13 +43,53 @@ export interface User {
   name: string;
   avatar_url?: string;
   user_type: UserType;
+  company_name?: string;
   preferences: UserPreferences;
   created_at: string;
 }
 
 export interface UserPreferences {
   notifications_enabled?: boolean;
+  // Profile fields stored in preferences to avoid schema issues
+  profile?: UserProfile;
+  // Anthropic API key for AI features (synced across devices)
+  anthropic_api_key?: string;
 }
+
+// Home Buyer profile
+export interface HomeBuyerProfile {
+  phone?: string;
+  preferred_contact?: 'email' | 'phone' | 'text';
+  budget_min?: number;
+  budget_max?: number;
+  min_beds?: number;
+  min_baths?: number;
+  min_sqft?: number;
+  max_sqft?: number;
+  preferred_cities?: string[];
+  timeline?: 'asap' | '1-3_months' | '3-6_months' | '6-12_months' | 'just_browsing';
+  pre_approved?: boolean;
+  pre_approval_amount?: number;
+  areas_of_interest?: string[];
+  property_types?: string[];
+  must_haves?: string[];
+  deal_breakers?: string[];
+}
+
+// Real Estate Pro profile
+export interface BrokerProfile {
+  phone?: string;
+  company_name?: string;
+  license_number?: string;
+  license_state?: string;
+  years_experience?: number;
+  specializations?: string[];
+  service_areas?: string[];
+  bio?: string;
+  website?: string;
+}
+
+export type UserProfile = HomeBuyerProfile | BrokerProfile;
 
 export interface Property {
   id: string;
@@ -314,10 +354,26 @@ export type MainTabParamList = {
   Settings: undefined;
 };
 
+// Initial data from deep link (browser extension)
+export interface DeepLinkPropertyData {
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  price?: string;
+  beds?: string;
+  baths?: string;
+  sqft?: string;
+  lot_size?: string;
+  year_built?: string;
+  source_url?: string;
+  mls_number?: string;
+}
+
 export type HomeStackParamList = {
   PropertyList: undefined;
   PropertyDetail: { propertyId: string };
-  AddProperty: { propertyId?: string };
+  AddProperty: { propertyId?: string; initialData?: DeepLinkPropertyData };
 };
 
 // Showing/Tour Scheduling
@@ -356,8 +412,27 @@ export interface Client {
   pre_approval_amount?: number;
   notes?: string;
   created_by: string;
+  household_id?: string;
   created_at: string;
   updated_at: string;
+  // Joined data
+  linked_properties?: ClientProperty[];
+}
+
+export type ClientPropertyStatus = 'interested' | 'shown' | 'rejected' | 'offer_made' | 'closed';
+
+export interface ClientProperty {
+  id: string;
+  client_id: string;
+  property_id: string;
+  status: ClientPropertyStatus;
+  shown_date?: string;
+  feedback?: string;
+  rating?: number;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  property?: Property;
 }
 
 // Activity Tracking

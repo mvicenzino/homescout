@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { ActivityIndicator, View, StyleSheet, Linking } from 'react-native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Svg, { Path, Rect, Line, Circle } from 'react-native-svg';
+import * as ExpoLinking from 'expo-linking';
 
 import { useAuthStore } from '../store/authStore';
 import { usePropertyStore } from '../store/propertyStore';
@@ -172,19 +173,22 @@ function HomeNavigator() {
 }
 
 function MainNavigator() {
-  const { user, household } = useAuthStore();
+  const { user, household, isDemoMode } = useAuthStore();
   const { fetchProperties, subscribeToChanges } = usePropertyStore();
   // Default to individual if user_type is not set
   const isBroker = user?.user_type === 'broker';
 
   useEffect(() => {
-    fetchProperties();
+    // Don't fetch from Supabase in demo mode - demo data is already loaded
+    if (!isDemoMode) {
+      fetchProperties();
 
-    if (household?.id) {
-      const unsubscribe = subscribeToChanges(household.id);
-      return unsubscribe;
+      if (household?.id) {
+        const unsubscribe = subscribeToChanges(household.id);
+        return unsubscribe;
+      }
     }
-  }, [household?.id]);
+  }, [household?.id, isDemoMode]);
 
   // Screens with custom gradient banners (no navigation header needed)
   const screensWithBanners = ['Home', 'Dashboard', 'Settings'];
@@ -249,6 +253,81 @@ function LoadingScreen() {
   );
 }
 
+// Deep linking configuration for browser extension
+const linking: LinkingOptions<any> = {
+  prefixes: [ExpoLinking.createURL('/'), 'homescout://'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          Home: {
+            screens: {
+              AddProperty: {
+                path: 'add-property',
+                parse: {
+                  initialData: (params: any) => params,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  // Custom function to parse the URL and extract initialData
+  getStateFromPath: (path, options) => {
+    console.log('Deep link path received:', path);
+
+    // Check if this is an add-property deep link
+    if (path.includes('add-property')) {
+      const params: Record<string, string> = {};
+
+      // Extract query string - handle both formats
+      // Format 1: /--/add-property?params
+      // Format 2: add-property?params
+      const queryStart = path.indexOf('?');
+      if (queryStart !== -1) {
+        const queryString = path.substring(queryStart + 1);
+        const searchParams = new URLSearchParams(queryString);
+
+        searchParams.forEach((value, key) => {
+          params[key] = decodeURIComponent(value);
+        });
+      }
+
+      console.log('Parsed deep link params:', params);
+
+      // Return navigation state with initialData
+      return {
+        routes: [
+          {
+            name: 'Main',
+            state: {
+              routes: [
+                {
+                  name: 'Home',
+                  state: {
+                    routes: [
+                      { name: 'PropertyList' },
+                      {
+                        name: 'AddProperty',
+                        params: { initialData: params },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      };
+    }
+
+    // Default behavior for other links
+    return undefined;
+  },
+};
+
 export function Navigation() {
   const { isInitialized, isLoading, user, household, initialize } = useAuthStore();
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
@@ -282,7 +361,7 @@ export function Navigation() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {isAuthenticated ? (
           <RootStack.Screen name="Main" component={MainNavigator} />
